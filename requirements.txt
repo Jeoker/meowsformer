@@ -1,0 +1,20 @@
+fastapi
+uvicorn[standard]
+openai
+pydantic>=2.0
+pydantic-settings
+chromadb>=0.4.22
+python-multipart
+httpx
+instructor>=1.0.0
+loguru
+python-dotenv
+# Audio processing
+# ffmpeg-python # Optional wrapper, we use subprocess directly but good to list if needed later
+numpy
+librosa>=0.10.0
+soundfile>=0.12.0
+pytsmod>=0.3.0
+scipy>=1.10.0
+# Data acquisition
+zenodo-get
