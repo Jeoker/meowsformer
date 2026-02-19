@@ -4,6 +4,7 @@ from app.core.config import settings
 from loguru import logger
 from app.services.rag_service import initialize_knowledge_base
 from app.api.endpoints import router as api_router
+from app.api.ws_endpoints import router as ws_router
 import uvicorn
 import asyncio
 import os
@@ -40,6 +41,14 @@ async def startup_event():
     except Exception as e:
         logger.error(f"Failed to initialize knowledge base: {e}")
 
+    # Pre-load tagged samples for the matching engine
+    try:
+        from app.services.sample_matcher import load_tagged_samples
+        load_tagged_samples()
+        logger.info("Tagged samples loaded for matching engine.")
+    except Exception as e:
+        logger.warning(f"Could not load tagged samples: {e}")
+
 @app.get("/health")
 async def health_check():
     """健康检查接口"""
@@ -47,6 +56,9 @@ async def health_check():
 
 # Register the main router under /api
 app.include_router(api_router, prefix="/api")
+
+# Register WebSocket routes (no prefix — ws://host/ws/translate)
+app.include_router(ws_router)
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=settings.DEBUG_MODE)

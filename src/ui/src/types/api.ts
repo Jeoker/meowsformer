@@ -54,3 +54,66 @@ export interface TranslateRequest {
   breed?: string;
   output_sr?: 16000 | 44100;
 }
+
+// ── Streaming / WebSocket Types ─────────────────────────────────────────
+
+/** LLM target-tag set describing the ideal cat sound */
+export interface TargetTagSet {
+  emotion: string[];
+  intent: string[];
+  acoustic: string[];
+  social_context: string[];
+  reasoning: string;
+}
+
+/** Matched sample info returned from the matching engine */
+export interface TaggedSampleInfo {
+  sample_id: string;
+  breed: string;
+  context: string;
+  tags: Record<string, string[]>;
+  match_score: number;
+  matched_tags: Record<string, string[]>;
+}
+
+/** Final streaming translation result */
+export interface StreamingTranslationResult {
+  transcription: string;
+  target_tags: TargetTagSet;
+  selected_sample: TaggedSampleInfo;
+  audio_base64: string;
+  reasoning: string;
+}
+
+// ── WebSocket message types ─────────────────────────────────────────────
+
+export interface WSTranscriptionMessage {
+  type: "transcription";
+  text: string;
+  is_final: boolean;
+}
+
+export interface WSAnalysisPreviewMessage {
+  type: "analysis_preview";
+  emotion: string;
+  intent: string;
+}
+
+export interface WSResultMessage {
+  type: "result";
+  transcription: string;
+  selected_category: TaggedSampleInfo;
+  audio_base64: string;
+  reasoning: string;
+}
+
+export interface WSErrorMessage {
+  type: "error";
+  detail: string;
+}
+
+export type WSServerMessage =
+  | WSTranscriptionMessage
+  | WSAnalysisPreviewMessage
+  | WSResultMessage
+  | WSErrorMessage;
