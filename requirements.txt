@@ -22,3 +22,8 @@ scipy>=1.10.0
 websockets
 # Data acquisition
 zenodo-get
+# Auth
+python-jose[cryptography]
+passlib[bcrypt]
+sqlalchemy
+alembic

@@ -5,9 +5,9 @@ from loguru import logger
 from app.services.rag_service import initialize_knowledge_base
 from app.api.endpoints import router as api_router
 from app.api.ws_endpoints import router as ws_router
+from app.auth.router import router as auth_router
+from app.auth.database import create_tables
 import uvicorn
-import asyncio
-import os
 
 # 配置日志
 logger.add("app.log", rotation="500 MB")
@@ -18,30 +18,35 @@ app = FastAPI(
 )
 
 # CORS 配置
-origins = [
-    "*", # 开发阶段允许所有来源，生产环境请修改
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+
 @app.on_event("startup")
 async def startup_event():
-    """Run startup tasks such as initializing the RAG database."""
+    """Run startup tasks."""
     logger.info("Starting up MeowTranslator...")
+
+    # Create auth DB tables
     try:
-        # Initialize the knowledge base with mock data if empty
+        create_tables()
+        logger.info("Auth database tables created/verified.")
+    except Exception as e:
+        logger.error(f"Failed to create auth tables: {e}")
+
+    # Initialize RAG knowledge base
+    try:
         initialize_knowledge_base()
         logger.info("Knowledge base initialized successfully.")
     except Exception as e:
         logger.error(f"Failed to initialize knowledge base: {e}")
 
-    # Pre-load tagged samples for the matching engine
+    # Pre-load tagged samples for matching engine
     try:
         from app.services.sample_matcher import load_tagged_samples
         load_tagged_samples()
@@ -49,16 +54,18 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"Could not load tagged samples: {e}")
 
+
 @app.get("/health")
 async def health_check():
     """健康检查接口"""
     return {"status": "ok", "app": "MeowTranslator"}
 
-# Register the main router under /api
-app.include_router(api_router, prefix="/api")
 
-# Register WebSocket routes (no prefix — ws://host/ws/translate)
-app.include_router(ws_router)
+# Register routers
+app.include_router(auth_router)          # /auth/register, /auth/login, /auth/me
+app.include_router(api_router, prefix="/api")  # /api/translate, /api/v1/translate
+app.include_router(ws_router)            # /ws/translate
+
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=settings.DEBUG_MODE)

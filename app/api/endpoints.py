@@ -1,6 +1,7 @@
 import os
 import tempfile
 import asyncio
+from app.auth.dependencies import get_optional_user
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query
 from loguru import logger
 from typing import Dict, Any, Optional
