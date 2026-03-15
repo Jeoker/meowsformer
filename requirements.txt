@@ -6,7 +6,8 @@ pydantic-settings
 chromadb>=0.4.22
 python-multipart
 httpx
-flet
+flet==0.82.2
+flet-audio==0.82.2
 instructor>=1.0.0
 loguru
 python-dotenv

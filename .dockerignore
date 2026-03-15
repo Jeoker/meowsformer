@@ -1,0 +1,45 @@
+# Git / IDE
+.git
+.gitignore
+.cursor
+
+# Python
+venv
+.venv
+env
+__pycache__
+*.py[cod]
+*$py.class
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+
+# 避免覆盖 Dockerfile 中 COPY requirements-docker.txt → requirements.txt 的精简依赖
+requirements.txt
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# Frontend (API 镜像不构建 Vue)
+src/ui/node_modules
+src/ui/dist
+src/ui/.vite
+
+# 本地 Chroma（容器内用 CHROMA_DB_PATH=/data/chroma_db）
+db/chroma_db
+db/*.db
+
+# 本地已下载的语料（体积大；需要时在镜像构建阶段用 tools.download_datasets 拉取）
+assets/raw_data
+
+# 文档与测试（减小 build context）
+docs
+tests

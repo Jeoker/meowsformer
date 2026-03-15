@@ -1,12 +1,20 @@
-import instructor
-from openai import OpenAI
-from app.core.config import settings
-from app.schemas.translation import CatTranslationResponse
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 import json
 
-# Initialize the OpenAI client and patch it with instructor
-client = instructor.from_openai(OpenAI(api_key=settings.OPENAI_API_KEY))
+import instructor
+from app.core.api_client import get_instructor_client
+from app.core.config import settings
+from app.schemas.translation import CatTranslationResponse
+
+_client: Optional[instructor.Instructor] = None
+
+
+def _get_client() -> instructor.Instructor:
+    global _client
+    if _client is None:
+        _client = get_instructor_client()
+    return _client
+
 
 def analyze_intention(text: str, audio_features: Dict[str, Any], rag_context: str) -> CatTranslationResponse:
     """
@@ -37,8 +45,8 @@ def analyze_intention(text: str, audio_features: Dict[str, Any], rag_context: st
     请分析并在 JSON 中返回结果，确保 pitch_adjust 在 0.8 到 1.5 之间。
     """
 
-    response = client.chat.completions.create(
-        model="gpt-4o", # Or gpt-3.5-turbo, using gpt-4o as default for high quality
+    response = _get_client().chat.completions.create(
+        model=settings.LLM_MODEL,
         response_model=CatTranslationResponse,
         messages=[
             {"role": "system", "content": system_prompt},

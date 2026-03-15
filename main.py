@@ -5,8 +5,6 @@ from loguru import logger
 from app.services.rag_service import initialize_knowledge_base
 from app.api.endpoints import router as api_router
 from app.api.ws_endpoints import router as ws_router
-from app.auth.router import router as auth_router
-from app.auth.database import create_tables
 import uvicorn
 
 # 配置日志
@@ -32,13 +30,6 @@ async def startup_event():
     """Run startup tasks."""
     logger.info("Starting up MeowTranslator...")
 
-    # Create auth DB tables
-    try:
-        create_tables()
-        logger.info("Auth database tables created/verified.")
-    except Exception as e:
-        logger.error(f"Failed to create auth tables: {e}")
-
     # Initialize RAG knowledge base
     try:
         initialize_knowledge_base()
@@ -62,7 +53,6 @@ async def health_check():
 
 
 # Register routers
-app.include_router(auth_router)          # /auth/register, /auth/login, /auth/me
 app.include_router(api_router, prefix="/api")  # /api/translate, /api/v1/translate
 app.include_router(ws_router)            # /ws/translate
 

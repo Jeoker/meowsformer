@@ -2,13 +2,24 @@ import os
 import shutil
 import tempfile
 import asyncio
+from typing import TYPE_CHECKING, Optional
 from fastapi import HTTPException
 from app.services.audio_processor import convert_to_wav
-from openai import OpenAI
-from app.core.config import settings
+from app.core.api_client import get_openai_client
 from loguru import logger
 
-client = OpenAI(api_key=settings.OPENAI_API_KEY)
+if TYPE_CHECKING:
+    from openai import OpenAI
+
+_client: Optional["OpenAI"] = None
+
+
+def _get_client() -> "OpenAI":
+    global _client
+    if _client is None:
+        _client = get_openai_client()
+    return _client
+
 
 async def transcribe_audio(file_path: str) -> str:
     """
@@ -50,8 +61,7 @@ async def transcribe_audio(file_path: str) -> str:
                  
             # Read converted audio file
             with open(temp_file_path, "rb") as audio_file:
-                # Call OpenAI Whisper API
-                transcription = client.audio.transcriptions.create(
+                transcription = _get_client().audio.transcriptions.create(
                     model="whisper-1",
                     file=audio_file,
                     response_format="text"

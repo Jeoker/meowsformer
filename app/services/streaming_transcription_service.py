@@ -18,23 +18,25 @@ import io
 import tempfile
 import time
 from pathlib import Path
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import numpy as np
 import soundfile as sf
 from loguru import logger
-from openai import OpenAI
 
-from app.core.config import settings
+from app.core.api_client import get_openai_client
 
-# OpenAI client
-_client: Optional[OpenAI] = None
+if TYPE_CHECKING:
+    from openai import OpenAI
+
+# Lazy-initialized OpenAI client
+_client: Optional["OpenAI"] = None
 
 
-def _get_client() -> OpenAI:
+def _get_client() -> "OpenAI":
     global _client
     if _client is None:
-        _client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        _client = get_openai_client()
     return _client
 
 

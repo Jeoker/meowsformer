@@ -22,8 +22,8 @@ from typing import Optional
 import instructor
 import soundfile as sf
 from loguru import logger
-from openai import OpenAI
 
+from app.core.api_client import get_instructor_client
 from app.core.config import settings
 from app.data.meow_catalog import TAG_TAXONOMY
 from app.schemas.ws_messages import (
@@ -41,7 +41,7 @@ from app.services.sample_matcher import (
 
 ASSETS_DIR = Path(__file__).resolve().parent.parent.parent / "assets"
 
-# ── OpenAI client (instructor-patched) ───────────────────────────────────
+# ── Instructor client (lazy-initialized) ─────────────────────────────────
 
 _client: Optional[instructor.Instructor] = None
 
@@ -49,7 +49,7 @@ _client: Optional[instructor.Instructor] = None
 def _get_client() -> instructor.Instructor:
     global _client
     if _client is None:
-        _client = instructor.from_openai(OpenAI(api_key=settings.OPENAI_API_KEY))
+        _client = get_instructor_client()
     return _client
 
 
@@ -108,7 +108,7 @@ async def generate_target_tags(text: str) -> TargetTagSet:
 
     try:
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model=settings.LLM_MODEL,
             response_model=TargetTagSet,
             messages=[
                 {"role": "system", "content": _SYSTEM_PROMPT},

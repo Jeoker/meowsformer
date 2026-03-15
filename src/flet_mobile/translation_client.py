@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from collections.abc import AsyncIterable, Awaitable, Callable
 from typing import Any
@@ -9,6 +10,13 @@ from urllib.parse import urlparse
 
 import httpx
 import websockets
+
+
+WS_CONNECT_TIMEOUT = 5.0
+
+
+class WebSocketConnectionError(Exception):
+    """Raised when the WebSocket connection cannot be established."""
 
 
 class TranslationClient:
@@ -39,33 +47,84 @@ class TranslationClient:
         chunks: AsyncIterable[bytes],
         on_event: Callable[[dict[str, Any]], Awaitable[None]],
         breed_preference: str | None = None,
+        on_state_change: Callable[[str], None] | None = None,
     ) -> None:
         """
-        Send PCM chunks to /ws/translate and forward events to callback.
+        Send PCM chunks to /ws/translate and forward server events concurrently.
 
-        The callback receives parsed JSON messages from the server, including
-        transcription, analysis_preview, result, and error payloads.
+        ``_sender`` pushes PCM frames as they arrive from the audio recorder,
+        while ``_receiver`` forwards every server message to *on_event* in
+        real-time.  Both coroutines run simultaneously via `asyncio.TaskGroup`.
+
+        *on_state_change* fires with "connecting", "connected", or
+        "disconnected" to let the UI track the WebSocket lifecycle.
         """
         ws_url = self._build_ws_url("/ws/translate")
-        async with websockets.connect(ws_url, max_size=5 * 1024 * 1024) as ws:
+
+        if on_state_change:
+            on_state_change("connecting")
+
+        try:
+            ws = await asyncio.wait_for(
+                websockets.connect(ws_url, max_size=5 * 1024 * 1024),
+                timeout=WS_CONNECT_TIMEOUT,
+            )
+        except (asyncio.TimeoutError, OSError, websockets.WebSocketException) as exc:
+            if on_state_change:
+                on_state_change("disconnected")
+            raise WebSocketConnectionError(
+                f"无法建立 WebSocket 连接 ({type(exc).__name__}): {exc}"
+            ) from exc
+
+        try:
+            if on_state_change:
+                on_state_change("connected")
+
             await ws.send(
                 json.dumps(
                     {"type": "config", "breed_preference": breed_preference or "Default"}
                 )
             )
 
-            async for chunk in chunks:
-                await ws.send(chunk)
+            async with asyncio.TaskGroup() as tg:
+                tg.create_task(self._sender(ws, chunks))
+                tg.create_task(self._receiver(ws, on_event))
+        finally:
+            if on_state_change:
+                on_state_change("disconnected")
+            await ws.close()
 
-            await ws.send(json.dumps({"type": "stop"}))
-            while True:
-                message = await ws.recv()
-                if not isinstance(message, str):
-                    continue
+    # ------------------------------------------------------------------
+    # Internal coroutines
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    async def _sender(
+        ws: websockets.WebSocketClientProtocol,
+        chunks: AsyncIterable[bytes],
+    ) -> None:
+        """Push PCM chunks then send the stop sentinel."""
+        async for chunk in chunks:
+            await ws.send(chunk)
+        await ws.send(json.dumps({"type": "stop"}))
+
+    @staticmethod
+    async def _receiver(
+        ws: websockets.WebSocketClientProtocol,
+        on_event: Callable[[dict[str, Any]], Awaitable[None]],
+    ) -> None:
+        """Forward server JSON messages until a terminal event arrives."""
+        async for message in ws:
+            if not isinstance(message, str):
+                continue
+            try:
                 payload = json.loads(message)
-                await on_event(payload)
-                if payload.get("type") in {"result", "error"}:
-                    break
+            except json.JSONDecodeError:
+                await on_event({"type": "error", "detail": f"畸形 JSON: {message[:120]}"})
+                break
+            await on_event(payload)
+            if payload.get("type") in {"result", "error"}:
+                break
 
     def _build_ws_url(self, endpoint: str) -> str:
         parsed = urlparse(self.base_url)

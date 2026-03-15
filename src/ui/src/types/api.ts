@@ -2,7 +2,7 @@
  * Meowsformer — API Type Definitions
  * ====================================
  * TypeScript interfaces mirroring the backend Pydantic schemas.
- * These are the contracts between the FastAPI backend and the React frontend.
+ * These are the contracts between the FastAPI backend and the Vue frontend.
  */
 
 /** Phase 0 — LLM analysis response */
