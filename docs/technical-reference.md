@@ -128,6 +128,7 @@
 ├── docs/                                 # 项目文档
 │   ├── development-overview.md           # 项目概览、开发阶段、进度、路线图
 │   ├── technical-reference.md            # 本文件
+│   ├── deployment-fly.md                 # Docker 镜像、Fly.io、计费链接
 │   ├── project-testing.md                # 测试总览与规范
 │   ├── wsl2-audio-setup.md                # WSL2 麦克风录音配置 (2026-03-15)
 │   └── batch-reports/                    # 每轮 Batch 详细开发报告
@@ -141,7 +142,11 @@
 │
 ├── scripts/
 │   └── run_e2e_test.sh                   # E2E 上线测试 (Docker / 本地)
-├── main.py                               # FastAPI app 创建, 路由注册, startup 事件
+├── Dockerfile                            # 多阶段：Vite 构建 src/ui → static/ui；Python 运行 FastAPI
+├── fly.toml                              # Fly.io：internal_port 与镜像 PORT 对齐（通常 8080）
+├── requirements-docker.txt               # 容器内 pip 依赖（无 Flet / zenodo-get 等）
+├── static/ui/                            # Vue 构建产物（Docker 多阶段生成；本地开发通常不存在）
+├── main.py                               # FastAPI app 创建, 路由注册, startup 事件, `/` 与 `/assets` 服务 SPA
 ├── requirements.txt
 ├── .env                                  # 环境变量 (不提交)
 ├── .gitignore
@@ -693,3 +698,9 @@ LLM 返回目标标签后：
 - 新增 / 修改 / 删除的文件及其主要函数
 - 变更的调用链或数据流
 - 新增的算法或协议细节
+
+---
+
+## 11. 部署（Docker / Fly.io）
+
+镜像结构、`CHROMA_DB_PATH`、`.dockerignore`、`FETCH_DATA`、将 `db/chroma_db` 打入镜像、Fly `secrets` 与官方计费文档链接见 **[`deployment-fly.md`](./deployment-fly.md)**。

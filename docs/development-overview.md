@@ -13,7 +13,7 @@
 | `app/auth/` | Phase 6 计划 | **不存在**（暂缓），Batch 1 已移除所有 auth 导入，服务器正常启动 |
 | `test_auth.py` | 计划中 | **不存在**（暂缓） |
 | 前端 auth 组件 | AuthContext, Navbar, ProtectedRoute, LoginPage 等 | **不存在**（暂缓），Batch 1 已简化 App.vue 为占位页面 |
-| Dockerfile | Phase 4 提及 | **不存在**（run_e2e_test.sh 中有 docker build 逻辑） |
+| Dockerfile / `fly.toml` | Phase 4 曾暂缓 | **已存在**（多阶段 Vue→`static/ui` + FastAPI；Fly 见 [`deployment-fly.md`](./deployment-fly.md)） |
 | `db/meowsformer_auth.db` | — | **残留文件** — auth 模块不存在，但空 SQLite 数据库文件仍留存于 `db/` 目录 |
 | 测试数量 | — | **330 个测试函数**，全部可运行（Batch 1: +24, Batch 2: +31, Batch 3: +25, Batch 4: +37, Phase 7 后 API 供应方切换: +42+31, 既有测试修复: +15） |
 
@@ -46,7 +46,7 @@ Meowsformer 是基于 FastAPI 的猫语翻译后端服务，将人类语音翻�
 1. **Legacy Pipeline (Phase 0–3):** 文件上传 → Whisper 转录 → RAG 科学上下文 → LLM 情绪分析 → DSP (VA 映射 + PSOLA 韵律变换) → 合成音频
 2. **Streaming Pipeline (Phase 5):** WebSocket 实时音频 → 分块 Whisper → LLM 目标标签生成 → 5 维加权匹配 → 真实猫叫录音播放
 
-**当前状态：** Phase 0–3, 5 后端完成。Phase 6 (Auth) 与 Phase 4 (部署) 暂缓。Phase 7 (Flet 移动端流式翻译) 已完成。**Phase 8 (Web Demo Sprint) 进行中** — Vue 单页翻译 UI 已落地（见 [phase8-batch-ui-2026-04-06.md](./batch-reports/phase8-batch-ui-2026-04-06.md)）；静态一体化与云端部署仍待 Batch 2/3。详见 [Phase 8 章节](#phase-8--web-demo-sprint) 与 [Sprint 计划](./batch-reports/phase8-sprint-plan.md)。330 个测试函数全部可运行。
+**当前状态：** Phase 0–3, 5 后端完成。Phase 6 (Auth) 与 Phase 4 (CI/CD 生产化) 暂缓。Phase 7 (Flet 移动端流式翻译) 已完成。**Phase 8 (Web Demo Sprint) 进行中** — Vue 单页翻译 UI 已落地（见 [phase8-batch-ui-2026-04-06.md](./batch-reports/phase8-batch-ui-2026-04-06.md)）；Docker 多阶段与 Fly 配置见 [`deployment-fly.md`](./deployment-fly.md)。详见 [Phase 8 章节](#phase-8--web-demo-sprint) 与 [Sprint 计划](./batch-reports/phase8-sprint-plan.md)。330 个测试函数全部可运行。
 
 ---
 
@@ -58,7 +58,7 @@ Meowsformer 是基于 FastAPI 的猫语翻译后端服务，将人类语音翻�
 | **Phase 1** | 数据获取 — Zenodo 语料库下载、元数据解析、registry 索引 | Done |
 | **Phase 2** | DSP 引擎 — VA 映射、音频检索、PSOLA 韵律变换 | Done |
 | **Phase 3** | 集成 — DSP 接入 API 管线、端到端流程、UI 预览 | Done |
-| **Phase 4** | 部署 — Docker 容器化、CI/CD、生产化 | 暂缓 |
+| **Phase 4** | 部署 — CI/CD、生产化加固 | 暂缓（仓库已有 `Dockerfile` / `fly.toml`，见 [`deployment-fly.md`](./deployment-fly.md)） |
 | **Phase 5** | 流式管线 — WebSocket streaming、多维标签体系、LLM 目标标签、加权匹配 | Done |
 | **Phase 6** | 全栈前端 + JWT 认证 | 暂缓 |
 | **Phase 7** | **Flet 移动端流式翻译** — 解除阻塞 → WS 接入 → 音频播放 → UX | **Done** (Batch 1-4 ✅) |
@@ -184,8 +184,8 @@ LLM_MODEL=deepseek         # 可选；ai-builders 默认 deepseek，可覆盖为
 | Batch | 目标 | 关键产出 |
 |-------|------|---------|
 | Batch 1 | 前端激活 + UI 打磨 | ✅ `TranslatePage` + 子组件 + 流式前端/WS/播放根因修复 — 见 [phase8-batch-ui-2026-04-06.md](./batch-reports/phase8-batch-ui-2026-04-06.md) |
-| Batch 2 | 静态文件服务 + 部署配置 | `main.py` 加 StaticFiles mount；新增 Dockerfile (双阶段构建) |
-| Batch 3 | 云端部署 | Railway/Render 部署；公开 URL 端到端验证 |
+| Batch 2 | 静态文件服务 + 部署配置 | ✅ `main.py` `/` + `/assets`；`Dockerfile` 多阶段 — 见 [`deployment-fly.md`](./deployment-fly.md) |
+| Batch 3 | 云端部署 | Fly.io（`fly deploy`）；公开 URL 端到端验证 |
 
 **工作流：** 采用 Sprint Mode（见 `dev-workflow.mdc`），跳过 reviewer/test-engineer 循环，PM 通过浏览器手动验证。
 
@@ -250,6 +250,11 @@ MEOWSFORMER_FLET_VIEW=desktop flet run -m src.flet_mobile.app
 
 必须用 `flet run -m` 而非 `python -m`，否则预构建客户端不包含 flet-audio，会显示 "Unknown control: Audio"。
 
+### 可选：Docker 与 Fly.io
+
+- 镜像说明、`FETCH_DATA`、Chroma 打入镜像、`fly secrets`、计费文档链接：**[`deployment-fly.md`](./deployment-fly.md)**。
+- 部署：`fly auth login` → `fly secrets set OPENAI_API_KEY=...` → `fly deploy`（`fly.toml` 中 `internal_port` 与容器 `PORT` 一致，默认 8080）。
+
 ---
 
 ## 7. 后续阶段
@@ -274,3 +279,4 @@ MEOWSFORMER_FLET_VIEW=desktop flet run -m src.flet_mobile.app
 | [`wsl2-audio-setup.md`](./wsl2-audio-setup.md) | WSL2 麦克风录音配置 |
 | [`batch-reports/`](./batch-reports/) | 每轮 Batch 的详细开发报告（修改文件、技术方案、验收结果） |
 | [`batch-reports/phase8-sprint-plan.md`](./batch-reports/phase8-sprint-plan.md) | **Phase 8 Web Demo Sprint 详细计划**（技术路线转向决策、Batch 拆分、部署架构、developer 沟通模板） |
+| [`deployment-fly.md`](./deployment-fly.md) | Docker 镜像、`fly.toml`、Fly.io 命令、计费与官方文档链接 |

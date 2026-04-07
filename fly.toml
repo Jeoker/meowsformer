@@ -7,6 +7,8 @@ app = 'meowsformer'
 primary_region = 'ewr'
 
 [build]
+  # Docker build-arg for Dockerfile: FETCH_DATA=true runs tools.download_datasets in the image.
+  args = { FETCH_DATA = "true" }
 
 [http_service]
   internal_port = 8080

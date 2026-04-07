@@ -198,35 +198,37 @@ async def select_and_encode(
     matches = find_best_match(
         target_tags=target_tags,
         breed_preference=breed_preference,
-        top_k=1,
+        top_k=5,
     )
 
     if not matches:
         logger.warning("No match found for target tags")
         return None
 
-    best: MatchResult = matches[0]
-    sample = best.sample
+    for best in matches:
+        sample = best.sample
+        wav_path = ASSETS_DIR / sample.file_path
+        if not wav_path.exists():
+            logger.warning("WAV file not found: {}", wav_path)
+            continue
+        audio_b64 = _encode_wav_base64(wav_path)
+        return StreamingTranslationResult(
+            transcription="",  # Will be filled by the caller
+            target_tags=target_tags,
+            selected_sample=TaggedSampleInfo(
+                sample_id=sample.id,
+                breed=sample.breed,
+                context=sample.context,
+                tags=sample.tags,
+                match_score=round(best.score, 4),
+                matched_tags=best.matched_tags,
+            ),
+            audio_base64=audio_b64,
+            reasoning=target_tags.reasoning,
+        )
 
-    # Read the WAV file
-    wav_path = ASSETS_DIR / sample.file_path
-    if not wav_path.exists():
-        logger.warning("WAV file not found: {}", wav_path)
-        return None
-
-    audio_b64 = _encode_wav_base64(wav_path)
-
-    return StreamingTranslationResult(
-        transcription="",  # Will be filled by the caller
-        target_tags=target_tags,
-        selected_sample=TaggedSampleInfo(
-            sample_id=sample.id,
-            breed=sample.breed,
-            context=sample.context,
-            tags=sample.tags,
-            match_score=round(best.score, 4),
-            matched_tags=best.matched_tags,
-        ),
-        audio_base64=audio_b64,
-        reasoning=target_tags.reasoning,
+    logger.warning(
+        "No on-disk WAV for any of top {} scoring samples — corpus may be missing",
+        len(matches),
     )
+    return None

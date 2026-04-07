@@ -1,5 +1,8 @@
+from pathlib import Path
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
 from loguru import logger
 from app.services.rag_service import initialize_knowledge_base
@@ -56,6 +59,10 @@ async def health_check():
 app.include_router(api_router, prefix="/api")  # /api/translate, /api/v1/translate
 app.include_router(ws_router)            # /ws/translate
 
+# Vue SPA (Docker / production): built to static/ui by Dockerfile multi-stage build
+_ui_static = Path(__file__).resolve().parent / "static" / "ui"
+if _ui_static.is_dir():
+    app.mount("/", StaticFiles(directory=str(_ui_static), html=True), name="ui")
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=settings.DEBUG_MODE)

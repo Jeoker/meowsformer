@@ -1,7 +1,8 @@
-# Meowsformer — FastAPI API 镜像
+# Meowsformer — FastAPI + Vue (Vite) 多阶段镜像
 #
 # 设计要点：
-# - Debian bookworm + ffmpeg：与项目文档一致（转码、librosa 依赖）
+# - Stage ui: node 构建 src/ui → static/ui（与 docs/deployment-fly.md 一致）
+# - Stage app: Debian bookworm + ffmpeg：与项目文档一致（转码、librosa 依赖）
 # - libsndfile1：soundfile 读 WAV
 # - CHROMA_DB_PATH=/data/chroma_db：可写持久化（Fly 可挂 volume 到 /data）
 # - requirements-docker.txt：去掉 flet / sounddevice / zenodo-get 等仅本地或构建期工具
@@ -10,6 +11,18 @@
 #   docker build --build-arg FETCH_DATA=true -t meowsformer .
 #
 # syntax=docker/dockerfile:1
+
+# ── Vue (Vite) ─────────────────────────────────────────────────────────────
+FROM node:20-bookworm-slim AS ui-builder
+WORKDIR /ui
+COPY src/ui/package.json src/ui/package-lock.json ./
+RUN npm ci
+COPY src/ui/ ./
+RUN npm run build
+# Vite 默认 outDir=dist；main.py 从 static/ui 提供 SPA
+RUN mkdir -p /out/static && mv dist /out/static/ui
+
+# ── FastAPI ────────────────────────────────────────────────────────────────
 FROM python:3.12-slim-bookworm
 
 ENV PYTHONUNBUFFERED=1 \
@@ -29,6 +42,9 @@ COPY requirements-docker.txt requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
+
+# 覆盖仓库中可能不存在的 static/ui 目录，放入构建好的前端
+COPY --from=ui-builder /out/static/ui ./static/ui
 
 ARG FETCH_DATA=false
 RUN mkdir -p /data/chroma_db \
