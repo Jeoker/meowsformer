@@ -46,7 +46,7 @@ Meowsformer 是基于 FastAPI 的猫语翻译后端服务，将人类语音翻�
 1. **Legacy Pipeline (Phase 0–3):** 文件上传 → Whisper 转录 → RAG 科学上下文 → LLM 情绪分析 → DSP (VA 映射 + PSOLA 韵律变换) → 合成音频
 2. **Streaming Pipeline (Phase 5):** WebSocket 实时音频 → 分块 Whisper → LLM 目标标签生成 → 5 维加权匹配 → 真实猫叫录音播放
 
-**当前状态：** Phase 0–3, 5 后端完成。Phase 6 (Auth) 与 Phase 4 (部署) 暂缓。Phase 7 (Flet 移动端流式翻译) 已完成。**Phase 8 (Web Demo Sprint) 准备中** — 激活已有 Vue 前端、一体化部署到云端，产出可分享的公开 URL。详见 [Phase 8 章节](#phase-8--web-demo-sprint) 与 [Sprint 计划](./batch-reports/phase8-sprint-plan.md)。330 个测试函数全部可运行。
+**当前状态：** Phase 0–3, 5 后端完成。Phase 6 (Auth) 与 Phase 4 (部署) 暂缓。Phase 7 (Flet 移动端流式翻译) 已完成。**Phase 8 (Web Demo Sprint) 进行中** — Vue 单页翻译 UI 已落地（见 [phase8-batch-ui-2026-04-06.md](./batch-reports/phase8-batch-ui-2026-04-06.md)）；静态一体化与云端部署仍待 Batch 2/3。详见 [Phase 8 章节](#phase-8--web-demo-sprint) 与 [Sprint 计划](./batch-reports/phase8-sprint-plan.md)。330 个测试函数全部可运行。
 
 ---
 
@@ -62,7 +62,7 @@ Meowsformer 是基于 FastAPI 的猫语翻译后端服务，将人类语音翻�
 | **Phase 5** | 流式管线 — WebSocket streaming、多维标签体系、LLM 目标标签、加权匹配 | Done |
 | **Phase 6** | 全栈前端 + JWT 认证 | 暂缓 |
 | **Phase 7** | **Flet 移动端流式翻译** — 解除阻塞 → WS 接入 → 音频播放 → UX | **Done** (Batch 1-4 ✅) |
-| **Phase 8** | **Web Demo Sprint** — 激活 Vue 前端 → Tailwind 打磨 → 一体化云端部署 → 可分享 URL | **准备中** |
+| **Phase 8** | **Web Demo Sprint** — 激活 Vue 前端 → Tailwind 打磨 → 一体化云端部署 → 可分享 URL | **进行中**（UI 批次见 batch 报告） |
 
 ---
 
@@ -146,7 +146,7 @@ LLM_MODEL=deepseek         # 可选；ai-builders 默认 deepseek，可覆盖为
 
 ---
 
-### Phase 8 — Web Demo Sprint（准备中）
+### Phase 8 — Web Demo Sprint（进行中）
 
 > **决策记录 (2026-03-28)：技术路线转向 — 从 Flet-First 到 Web-First**
 >
@@ -161,24 +161,19 @@ LLM_MODEL=deepseek         # 可选；ai-builders 默认 deepseek，可覆盖为
 >
 > **不变的部分：** 后端代码（Phase 0-5）零修改；Flet 客户端保留在 `src/flet_mobile/` 不删除；330 个测试继续有效。
 
-#### 已有 Vue 前端资产清单
+#### Vue 前端资产（2026-04-06 更新）
 
-以下文件功能完整，当前未使用（`App.vue` 仅渲染占位页面）：
+| 文件 / 目录 | 说明 |
+|-------------|------|
+| `src/ui/src/pages/TranslatePage.vue` | 单页编排：composable 接线 + 子组件组合 |
+| `src/ui/src/components/translate/` | `DemoHero`, `ConnectionStatus`, `BreedPreference`, `RecordingDeck`, `LiveFeed`, `ErrorBanner`, `ResultSection`, `ResultCard`；Legacy `MeowPreviewPlayer` 仍保留 |
+| `src/ui/src/composables/useStreamingTranslation.ts` | WS 状态机；ScriptProcessor + **按真实采样率重采样至 16kHz**；`disconnect` 仅在录音中发 `stop`；`AudioContext.resume()` |
+| `src/ui/src/composables/useAudioPreview.ts` | base64→播放；调用方对 `audioBase64` 使用 `watch(..., { immediate: true })` |
+| `src/ui/src/types/api.ts` | 镜像后端 Pydantic / WS 消息 |
+| `src/ui/src/App.vue` | 挂载 `TranslatePage` |
+| `src/ui/vite.config.ts` | 开发代理 `/api`、`/ws` → :8000 |
 
-| 文件 | 状态 | 内容 |
-|------|------|------|
-| `src/ui/src/composables/useStreamingTranslation.ts` | 完整 | WebSocket 状态机 (idle→connecting→connected→recording→processing→result→error)、PCM 16kHz 采集 (ScriptProcessorNode, buffer=4096)、4 种 Server 消息解析分发；Vue 3 Composition API (ref/shallowRef/onUnmounted) |
-| `src/ui/src/composables/useAudioPreview.ts` | 完整 | base64 WAV → Blob → ObjectURL → HTMLAudioElement 生命周期管理，play/pause/stop/reset 控制；Vue 3 Composition API |
-| `src/ui/src/types/api.ts` | 完整 | TypeScript 类型定义，完全镜像后端 Pydantic 模型 (Phase 0-3 + Phase 5 + WebSocket 消息) |
-| `src/ui/src/components/translate/AudioRecorder.vue` | **完整但未使用** | 已接入两个 composable，品种选择、录音控制、实时转录展示、分析预览、结果播放全有；使用 inline style，需重写为 Tailwind |
-| `src/ui/src/components/translate/ResultCard.vue` | 完整 | Tailwind 暗色主题结果卡片，emotion/intent/acoustic 标签徽章，匹配分数展示，音频播放按钮 |
-| `src/ui/src/components/translate/MeowPreviewPlayer.vue` | 完整 | Legacy 管线的预览播放器 (Phase 8 暂不需要) |
-| `src/ui/vite.config.ts` | 完整 | Vite 开发代理 `/api` → :8000, `/ws` → ws://:8000 已配好 |
-| `src/ui/tailwind.config.js` | 完整 | 自定义 `meow` 色板 (meow-50 ~ meow-900) |
-| `src/ui/src/index.css` | 完整 | 暗色主题基础 (bg-gray-950, text-gray-100) |
-| `src/ui/package.json` | 完整 | Vue 3 + Vite 5 + Tailwind 3.4 + TypeScript 5.3 |
-
-**关键发现：** `AudioRecorder.vue` 已经把 `useStreamingTranslation` 和 `useAudioPreview` 接在一起，具备完整的录音→转录→结果→播放流程。Phase 8 的核心工作是把它导入 `App.vue`、用 Tailwind 重写 UI、然后部署。
+**批次备忘：** [phase8-batch-ui-2026-04-06.md](./batch-reports/phase8-batch-ui-2026-04-06.md)（根因修复与文件表）。
 
 #### Sprint 计划
 
@@ -188,7 +183,7 @@ LLM_MODEL=deepseek         # 可选；ai-builders 默认 deepseek，可覆盖为
 
 | Batch | 目标 | 关键产出 |
 |-------|------|---------|
-| Batch 1 | 前端激活 + UI 打磨 | `App.vue` 替换为 Tailwind 单页翻译界面；`AudioRecorder.vue` 重写为 Tailwind |
+| Batch 1 | 前端激活 + UI 打磨 | ✅ `TranslatePage` + 子组件 + 流式前端/WS/播放根因修复 — 见 [phase8-batch-ui-2026-04-06.md](./batch-reports/phase8-batch-ui-2026-04-06.md) |
 | Batch 2 | 静态文件服务 + 部署配置 | `main.py` 加 StaticFiles mount；新增 Dockerfile (双阶段构建) |
 | Batch 3 | 云端部署 | Railway/Render 部署；公开 URL 端到端验证 |
 

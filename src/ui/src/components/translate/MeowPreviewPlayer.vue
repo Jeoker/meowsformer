@@ -48,7 +48,8 @@ watch(
     } else {
       audioReset();
     }
-  }
+  },
+  { immediate: true }
 );
 
 const canConfirm = computed(

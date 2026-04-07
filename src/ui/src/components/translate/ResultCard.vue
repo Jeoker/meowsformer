@@ -1,10 +1,6 @@
 <!--
-  Meowsformer — ResultCard Component
-  ====================================
-  Tailwind dark-theme result card with emotion/intent/acoustic tag badges,
-  match score display, and audio playback button.
+  Meowsformer — 流式管线结果卡片（播放与标签）
 -->
-
 <script setup lang="ts">
 import { watch } from "vue";
 import { useAudioPreview } from "../../composables/useAudioPreview";
@@ -28,7 +24,8 @@ watch(
   () => props.audioBase64,
   (base64) => {
     if (base64) loadBase64(base64);
-  }
+  },
+  { immediate: true }
 );
 
 function toggle() {
@@ -40,49 +37,54 @@ function toggle() {
 }
 
 const colorMap = {
-  purple: "bg-purple-900/40 text-purple-300 border-purple-800",
-  blue: "bg-blue-900/40 text-blue-300 border-blue-800",
-  green: "bg-green-900/40 text-green-300 border-green-800",
+  purple: "bg-purple-950/55 text-purple-200 border-purple-800/60",
+  blue: "bg-blue-950/55 text-blue-200 border-blue-800/60",
+  green: "bg-emerald-950/50 text-emerald-200 border-emerald-800/60",
 } as const;
 </script>
 
 <template>
-  <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 space-y-4">
-    <!-- Transcription -->
+  <div
+    class="rounded-2xl border border-white/10 bg-gray-900/60 p-5 sm:p-6 backdrop-blur-md shadow-xl shadow-black/20 space-y-5"
+  >
     <div>
-      <p class="text-xs uppercase tracking-widest text-gray-500 mb-1">
-        You said
+      <p class="text-[10px] font-semibold uppercase tracking-widest text-gray-500 mb-1.5">
+        你说的是
       </p>
-      <p class="text-gray-200 italic">"{{ transcription }}"</p>
+      <p class="text-lg text-gray-100 leading-snug">
+        「{{ transcription }}」
+      </p>
     </div>
 
-    <!-- Tags -->
-    <div v-if="sample" class="flex flex-wrap gap-2">
+    <div
+      v-if="sample"
+      class="flex flex-wrap gap-2"
+    >
       <span
-        v-for="t in sample.tags.emotion"
+        v-for="t in sample.tags.emotion ?? []"
         :key="`emotion-${t}`"
         :class="[
-          'text-xs px-2.5 py-1 rounded-full border font-medium',
+          'text-xs px-2.5 py-1 rounded-lg border font-medium',
           colorMap.purple,
         ]"
       >
         {{ t }}
       </span>
       <span
-        v-for="t in sample.tags.intent"
+        v-for="t in sample.tags.intent ?? []"
         :key="`intent-${t}`"
         :class="[
-          'text-xs px-2.5 py-1 rounded-full border font-medium',
+          'text-xs px-2.5 py-1 rounded-lg border font-medium',
           colorMap.blue,
         ]"
       >
         {{ t }}
       </span>
       <span
-        v-for="t in sample.tags.acoustic?.slice(0, 3)"
+        v-for="t in sample.tags.acoustic?.slice(0, 3) ?? []"
         :key="`acoustic-${t}`"
         :class="[
-          'text-xs px-2.5 py-1 rounded-full border font-medium',
+          'text-xs px-2.5 py-1 rounded-lg border font-medium',
           colorMap.green,
         ]"
       >
@@ -90,32 +92,42 @@ const colorMap = {
       </span>
     </div>
 
-    <!-- Reasoning -->
     <p
       v-if="reasoning"
-      class="text-sm text-gray-400 leading-relaxed"
+      class="text-sm text-gray-400 leading-relaxed border-t border-white/5 pt-4"
     >
       {{ reasoning }}
     </p>
 
-    <!-- Audio player -->
+    <p
+      v-if="sample"
+      class="text-xs text-gray-500 tabular-nums"
+    >
+      样本 {{ sample.sample_id }} · {{ sample.breed }} · {{ sample.context }}
+    </p>
+
     <button
       v-if="audioBase64"
-      @click="toggle"
+      type="button"
       :disabled="playbackState === 'loading'"
-      class="flex items-center gap-3 bg-meow-600/20 hover:bg-meow-600/30 border border-meow-700 rounded-xl px-4 py-3 w-full transition group disabled:opacity-50"
+      class="flex w-full items-center gap-4 rounded-2xl border border-meow-700/50 bg-gradient-to-r from-meow-900/40 to-meow-800/30 px-4 py-4 text-left transition hover:border-meow-600/70 hover:from-meow-900/60 disabled:opacity-50"
+      @click="toggle"
     >
-      <span class="text-2xl">{{
-        playbackState === "playing" ? "⏸" : "▶️"
-      }}</span>
-      <div class="text-left">
-        <p
-          class="text-sm font-medium text-meow-300 group-hover:text-meow-200"
-        >
-          {{ playbackState === "playing" ? "Pause meow" : "Play meow" }}
+      <span
+        class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-meow-600/30 text-xl text-meow-100"
+        aria-hidden="true"
+      >
+        {{ playbackState === "playing" ? "⏸" : "▶" }}
+      </span>
+      <div class="min-w-0 flex-1">
+        <p class="text-sm font-semibold text-meow-200">
+          {{ playbackState === "playing" ? "暂停猫叫" : "播放猫叫" }}
         </p>
-        <p v-if="sample" class="text-xs text-gray-500">
-          Match score: {{ (sample.match_score * 100).toFixed(0) }}%
+        <p
+          v-if="sample"
+          class="text-xs text-gray-500 mt-0.5"
+        >
+          匹配度 {{ (sample.match_score * 100).toFixed(1) }}%
         </p>
       </div>
     </button>

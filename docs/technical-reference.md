@@ -19,7 +19,7 @@
 │   ├── auth/                            ★ 认证模块 — Phase 6（暂缓，目录不存在，所有导入已移除）
 │   ├── core/                             # 核心配置
 │   │   ├── __init__.py
-│   │   ├── config.py                     # Pydantic Settings (.env 读取; JWT 字段已移除)
+│   │   ├── config.py                     # Pydantic Settings (.env；含 WHISPER_LANGUAGE 可选)
 │   │   └── api_client.py               ★ API 供应方工厂 — 边缘功能 (openai / ai_builders 单点切换)
 │   ├── data/                            ★ 数据定义层 — Phase 5
 │   │   ├── __init__.py
@@ -68,27 +68,28 @@
 │       ├── tsconfig.json, tsconfig.node.json
 │       └── src/
 │           ├── main.ts                   # Vue 入口
-│           ├── App.vue                   # 占位页面（Batch 1 移除 auth 导入，简化为 TranslatePlaceholder）
-│           ├── index.css                 # Tailwind base styles
+│           ├── App.vue                   # 挂载 TranslatePage（Phase 8）
+│           ├── index.css                 # Tailwind + `.bg-app-gradient`
 │           ├── env.d.ts                  # Vue 模块类型声明
 │           ├── context/                  # 未实现 (auth 状态管理)，暂缓
 │           ├── composables/
-│           │   ├── useAudioPreview.ts    # base64→Blob→ObjectURL 播放
-│           │   └── useStreamingTranslation.ts ★ WebSocket 流式翻译 composable (Phase 5)
+│           │   ├── useAudioPreview.ts    # base64→Blob→ObjectURL；playsinline；data-URL 兼容
+│           │   └── useStreamingTranslation.ts ★ WS 流式 + ScriptProcessor；**重采样至 16kHz**；disconnect 条件 stop
 │           │   # useAuth.ts 未实现
 │           ├── types/
 │           │   └── api.ts                # TypeScript 类型 (镜像后端 Pydantic 模型)
+│           ├── pages/
+│           │   └── TranslatePage.vue     # ★ Phase 8 单页编排
 │           ├── components/
-│           │   ├── AudioRecorder.vue     # Legacy 录音组件
 │           │   ├── MeowPreviewPlayer.vue # Legacy 预览播放器
 │           │   ├── MeowPreviewPlayer.css
 │           │   └── translate/
-│           │       ├── ResultCard.vue     # 翻译结果展示
-│           │       ├── AudioRecorder.vue ★ 实时录音 (Phase 5)
+│           │       ├── ResultCard.vue     # 结果 + 播放
+│           │       ├── DemoHero.vue, ConnectionStatus.vue, BreedPreference.vue
+│           │       ├── RecordingDeck.vue, LiveFeed.vue, ErrorBanner.vue, ResultSection.vue
 │           │       ├── MeowPreviewPlayer.vue
 │           │       └── MeowPreviewPlayer.css
 │           │   # auth/, layout/ 未实现
-│           └── pages/                    # 未实现 (LoginPage, RegisterPage, TranslatePage)
 │
 ├── tools/                                # 工具脚本
 │   ├── __init__.py
@@ -399,7 +400,8 @@ LLM 系统提示词将完整标签词汇表注入，约束 LLM 只在有效范�
 |------|-----|------|
 | `MIN_TRANSCRIPTION_INTERVAL` | 2.5s | 中间转录最小间隔 |
 | `MIN_BUFFER_SIZE` | 32000 bytes | ≈ 1 秒 16kHz 16-bit mono |
-| 采样率 | 16000 Hz | PCM 16-bit mono |
+| 采样率 | 16000 Hz | PCM 16-bit mono（**客户端须**按真实采样率重采样后发送，见 `useStreamingTranslation`） |
+| Whisper `language` | 可选 | `settings.WHISPER_LANGUAGE` 非空时传入 API |
 
 **缓冲区 → WAV 流程：**
 
@@ -453,6 +455,8 @@ LLM 系统提示词将完整标签词汇表注入，约束 LLM 只在有效范�
 
 **主要函数：** `ws_translate(websocket)` — 主处理循环
 
+**断开：** 收到 ASGI `type == "websocket.disconnect"` 时必须退出循环，禁止再次 `receive()`（Starlette 否则抛 `Cannot call "receive" once a disconnect message has been received`）。
+
 ---
 
 ## 6. 模块详解 — Legacy Pipeline (Phase 0–3)
@@ -466,7 +470,7 @@ LLM 系统提示词将完整标签词汇表注入，约束 LLM 只在有效范�
 
 ### 6.2. 转录 (`app/services/transcription_service.py`)
 
-- `transcribe_audio(file_path)` — 文件 → FFmpeg WAV → OpenAI Whisper (`whisper-1`) → 文本
+- `transcribe_audio(file_path)` — 文件 → FFmpeg WAV → OpenAI Whisper (`whisper-1`) → 文本；若 `settings.WHISPER_LANGUAGE` 非空则传入 `language`（与流式转写一致）
 
 ### 6.3. RAG (`app/services/rag_service.py`)
 
@@ -565,21 +569,20 @@ LLM 系统提示词将完整标签词汇表注入，约束 LLM 只在有效范�
 
 | Composable | 状态 | 职责 |
 |------|------|------|
-| `useAudioPreview.ts` | 已实现 | base64 WAV → Blob → ObjectURL → HTMLAudioElement 生命周期；Vue 3 Composition API (ref/shallowRef/onUnmounted) |
-| `useStreamingTranslation.ts` | 已实现 | WebSocket 连接管理 (状态机, 无自动重连), ScriptProcessorNode 采集 PCM 16kHz (buffer=4096, ~256ms/帧), Float32→Int16 转换, 接收分发 4 类服务端消息；Vue 3 Composition API |
+| `useAudioPreview.ts` | 已实现 | base64 WAV → Blob → ObjectURL → HTMLAudioElement；`playsinline`；strip data-URL；play 前检查 `src` |
+| `useStreamingTranslation.ts` | 已实现 | WebSocket 状态机；ScriptProcessorNode；**按 `inputBuffer.sampleRate` 线性重采样到 16kHz** 再发 PCM；`cleanupAudioCapture()`；**`disconnect` 仅当正在 `recording` 时发 `stop`**；`AudioContext.resume()`；Vue 3 Composition API |
 | `useAuth.ts` | **未实现** | 计划: `apiRegister()`, `apiLogin()` — 调用 `/auth/*` 端点 |
 
 ### 8.3. 认证状态管理 — 未实现
 
 计划：全局认证状态管理（Pinia store 或 provide/inject），localStorage 存储 token，页面刷新时调用 `/auth/me` 校验有效性。
 
-### 8.4. 页面 — 未实现
+### 8.4. 页面
 
-| 页面 | 计划功能 |
-|------|------|
-| `LoginPage.vue` | email + password, 错误展示, 注册成功 banner |
-| `RegisterPage.vue` | email + password + confirm, 客户端验证 |
-| `TranslatePage.vue` | 模式切换 (streaming / file upload), 结果卡片 |
+| 页面 | 状态 | 说明 |
+|------|------|------|
+| `pages/TranslatePage.vue` | **已实现** (Phase 8) | 流式翻译单页；组合 `translate/*` 子组件；详见 [phase8-batch-ui-2026-04-06.md](../batch-reports/phase8-batch-ui-2026-04-06.md) |
+| `LoginPage.vue` / `RegisterPage.vue` | 未实现 | Phase 6 暂缓 |
 
 ### 8.5. Flet 移动端原型 (`src/flet_mobile/`)
 

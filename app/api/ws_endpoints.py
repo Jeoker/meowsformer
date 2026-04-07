@@ -98,6 +98,15 @@ async def ws_translate(websocket: WebSocket) -> None:
             # Receive next message (text or binary)
             message = await websocket.receive()
 
+            # Client closed the tab / navigated away / reset — must exit; otherwise
+            # Starlette raises: Cannot call "receive" once a disconnect message has been received.
+            if message.get("type") == "websocket.disconnect":
+                logger.info(
+                    "WebSocket client disconnect (code={})",
+                    message.get("code", ""),
+                )
+                break
+
             if "text" in message:
                 # JSON control message
                 try:

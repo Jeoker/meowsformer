@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Optional
 from fastapi import HTTPException
 from app.services.audio_processor import convert_to_wav
 from app.core.api_client import get_openai_client
+from app.core.config import settings
 from loguru import logger
 
 if TYPE_CHECKING:
@@ -61,11 +62,15 @@ async def transcribe_audio(file_path: str) -> str:
                  
             # Read converted audio file
             with open(temp_file_path, "rb") as audio_file:
-                transcription = _get_client().audio.transcriptions.create(
-                    model="whisper-1",
-                    file=audio_file,
-                    response_format="text"
-                )
+                kw: dict = {
+                    "model": "whisper-1",
+                    "file": audio_file,
+                    "response_format": "text",
+                }
+                lang = (settings.WHISPER_LANGUAGE or "").strip()
+                if lang:
+                    kw["language"] = lang
+                transcription = _get_client().audio.transcriptions.create(**kw)
                 
             return transcription
 

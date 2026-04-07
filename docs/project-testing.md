@@ -11,6 +11,8 @@ python -m unittest discover tests
 
 > **兼容性:** 推荐 Python 3.12。Python 3.14 与 `chromadb` 的 Pydantic V1 依赖存在兼容性问题。
 
+**Phase 8 Web UI（`src/ui/`）：** 当前无独立前端单元测试；Sprint 验收以浏览器手动联调为准（`npm run dev` + `python main.py`）。详见 [phase8-batch-ui-2026-04-06.md](./batch-reports/phase8-batch-ui-2026-04-06.md)。
+
 ---
 
 ## 测试基础设施文件

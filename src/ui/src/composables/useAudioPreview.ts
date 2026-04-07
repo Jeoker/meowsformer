@@ -51,13 +51,20 @@ export function useAudioPreview() {
     }
   }
 
+  /** Strip data-URL prefix if present; backend usually sends raw base64. */
+  function stripBase64Payload(raw: string): string {
+    const s = raw.trim();
+    const m = /^data:audio\/[^;]+;base64,(.+)$/is.exec(s);
+    return m ? m[1].replace(/\s/g, "") : s.replace(/\s/g, "");
+  }
+
   // ── Load base64 WAV ───────────────────────────────────────────────
   function loadBase64(base64Wav: string) {
     state.value = "loading";
     revokeUrl();
 
     try {
-      const binaryString = atob(base64Wav);
+      const binaryString = atob(stripBase64Payload(base64Wav));
       const bytes = new Uint8Array(binaryString.length);
       for (let i = 0; i < binaryString.length; i++) {
         bytes[i] = binaryString.charCodeAt(i);
@@ -70,6 +77,10 @@ export function useAudioPreview() {
         audioEl.value = new Audio();
       }
       const audio = audioEl.value;
+      audio.preload = "auto";
+      audio.volume = 1;
+      audio.setAttribute("playsinline", "");
+      audio.setAttribute("webkit-playsinline", "");
       audio.src = url;
       audio.load();
 
@@ -93,9 +104,9 @@ export function useAudioPreview() {
         state.value = "ended";
         currentTime.value = 0;
       };
-      audio.onerror = () => {
+      audio.onerror = (ev) => {
         state.value = "idle";
-        console.error("Audio playback error");
+        console.error("Audio playback error", ev);
       };
     } catch (err) {
       console.error("Failed to decode base64 audio:", err);
@@ -105,7 +116,14 @@ export function useAudioPreview() {
 
   // ── Playback controls ─────────────────────────────────────────────
   function play() {
-    audioEl.value?.play().catch(console.error);
+    const el = audioEl.value;
+    if (!el?.src) {
+      console.warn("useAudioPreview: play() called before loadBase64()");
+      return;
+    }
+    void el.play().catch((err) => {
+      console.error("Audio play() failed:", err);
+    });
   }
 
   function pause() {

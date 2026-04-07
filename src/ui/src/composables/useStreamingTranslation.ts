@@ -30,6 +30,33 @@ export interface StreamingResult {
 
 const SAMPLE_RATE = 16000;
 
+/**
+ * Browsers often ignore AudioContext({ sampleRate: 16000 }) and run at 44100/48000 Hz.
+ * The backend assumes 16 kHz PCM; without resampling, Whisper sees wrong-speed audio
+ * and returns unrelated or hallucinated text.
+ */
+function resampleFloat32Linear(
+  input: Float32Array,
+  sampleRateIn: number,
+  sampleRateOut: number
+): Float32Array {
+  if (sampleRateIn === sampleRateOut) {
+    return input;
+  }
+  const ratio = sampleRateIn / sampleRateOut;
+  const outLen = Math.max(1, Math.floor(input.length / ratio));
+  const out = new Float32Array(outLen);
+  for (let i = 0; i < outLen; i++) {
+    const srcPos = i * ratio;
+    const i0 = Math.floor(srcPos);
+    const frac = srcPos - i0;
+    const a = input[i0] ?? 0;
+    const b = input[i0 + 1] ?? a;
+    out[i] = a + frac * (b - a);
+  }
+  return out;
+}
+
 function getWsUrl(): string {
   const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
   return `${protocol}//${window.location.host}/ws/translate`;
@@ -119,6 +146,22 @@ export function useStreamingTranslation() {
     };
   }
 
+  /** Stop mic / processor / AudioContext without telling the server (used when closing WS). */
+  function cleanupAudioCapture() {
+    if (mediaStream.value) {
+      mediaStream.value.getTracks().forEach((t) => t.stop());
+      mediaStream.value = null;
+    }
+    if (processor.value) {
+      processor.value.disconnect();
+      processor.value = null;
+    }
+    if (audioCtx.value) {
+      audioCtx.value.close();
+      audioCtx.value = null;
+    }
+  }
+
   // ── Start Recording ─────────────────────────────────────────────────
 
   async function startRecording() {
@@ -140,6 +183,7 @@ export function useStreamingTranslation() {
 
       const context = new AudioContext({ sampleRate: SAMPLE_RATE });
       audioCtx.value = context;
+      await context.resume();
 
       const source = context.createMediaStreamSource(stream);
       // Buffer size 4096 at 16kHz ≈ 256ms
@@ -149,7 +193,13 @@ export function useStreamingTranslation() {
       proc.onaudioprocess = (e) => {
         if (socket.readyState !== WebSocket.OPEN) return;
 
-        const float32 = e.inputBuffer.getChannelData(0);
+        const raw = e.inputBuffer.getChannelData(0);
+        const inRate = e.inputBuffer.sampleRate;
+        const float32 =
+          inRate === SAMPLE_RATE
+            ? raw
+            : resampleFloat32Linear(raw, inRate, SAMPLE_RATE);
+
         const int16 = new Int16Array(float32.length);
         for (let i = 0; i < float32.length; i++) {
           const s = Math.max(-1, Math.min(1, float32[i]));
@@ -175,18 +225,7 @@ export function useStreamingTranslation() {
   // ── Stop Recording ──────────────────────────────────────────────────
 
   function stopRecording() {
-    if (mediaStream.value) {
-      mediaStream.value.getTracks().forEach((t) => t.stop());
-      mediaStream.value = null;
-    }
-    if (processor.value) {
-      processor.value.disconnect();
-      processor.value = null;
-    }
-    if (audioCtx.value) {
-      audioCtx.value.close();
-      audioCtx.value = null;
-    }
+    cleanupAudioCapture();
 
     const socket = ws.value;
     if (socket && socket.readyState === WebSocket.OPEN) {
@@ -198,8 +237,21 @@ export function useStreamingTranslation() {
   // ── Disconnect ──────────────────────────────────────────────────────
 
   function disconnect() {
-    stopRecording();
-    if (ws.value) {
+    const wasRecording = state.value === "recording";
+
+    cleanupAudioCapture();
+
+    const socket = ws.value;
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      // Only notify the server if we were still recording. Sending "stop" while idle
+      // (e.g. user hit Reset after a result) makes the server run the pipeline on an
+      // empty buffer and can confuse the next session on some timing paths.
+      if (wasRecording) {
+        socket.send(JSON.stringify({ type: "stop" }));
+      }
+      socket.close();
+      ws.value = null;
+    } else if (ws.value) {
       ws.value.close();
       ws.value = null;
     }
@@ -220,9 +272,7 @@ export function useStreamingTranslation() {
   // ── Cleanup on unmount ──────────────────────────────────────────────
 
   onUnmounted(() => {
-    mediaStream.value?.getTracks().forEach((t) => t.stop());
-    processor.value?.disconnect();
-    audioCtx.value?.close();
+    cleanupAudioCapture();
     ws.value?.close();
   });
 

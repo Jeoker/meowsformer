@@ -25,6 +25,7 @@ import soundfile as sf
 from loguru import logger
 
 from app.core.api_client import get_openai_client
+from app.core.config import settings
 
 if TYPE_CHECKING:
     from openai import OpenAI
@@ -134,11 +135,15 @@ class StreamingTranscriptionSession:
 
             client = _get_client()
             with open(tmp_path, "rb") as audio_file:
-                transcription = client.audio.transcriptions.create(
-                    model="whisper-1",
-                    file=audio_file,
-                    response_format="text",
-                )
+                kw: dict = {
+                    "model": "whisper-1",
+                    "file": audio_file,
+                    "response_format": "text",
+                }
+                lang = (settings.WHISPER_LANGUAGE or "").strip()
+                if lang:
+                    kw["language"] = lang
+                transcription = client.audio.transcriptions.create(**kw)
 
             return transcription.strip() if isinstance(transcription, str) else str(transcription).strip()
 

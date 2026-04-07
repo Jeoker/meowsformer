@@ -8,3 +8,25 @@
     min-height: 100vh;
   }
 }
+
+@layer utilities {
+  .bg-app-gradient {
+    @apply bg-gray-950;
+    background-image:
+      radial-gradient(
+        ellipse 90% 55% at 50% -15%,
+        rgba(247, 149, 53, 0.14),
+        transparent 55%
+      ),
+      radial-gradient(
+        ellipse 70% 45% at 100% 100%,
+        rgba(124, 63, 22, 0.12),
+        transparent 50%
+      ),
+      radial-gradient(
+        ellipse 50% 35% at 0% 80%,
+        rgba(59, 130, 246, 0.06),
+        transparent 45%
+      );
+  }
+}

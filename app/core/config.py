@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     # Empty = auto: openai → gpt-4o, ai_builders → deepseek. Set in .env to override.
     LLM_MODEL: str = ""
 
+    # Whisper ISO-639-1 code (e.g. zh, en). Empty = model auto-detect (can mis-detect short clips).
+    WHISPER_LANGUAGE: str = ""
+
     @model_validator(mode="after")
     def _set_llm_model_default(self) -> "Settings":
         if not self.LLM_MODEL:

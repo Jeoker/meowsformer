@@ -126,6 +126,8 @@ function getWsUrl(): string {
 - 浏览器打开 `http://localhost:5173`
 - 能录音、看到实时转录、看到标签预览、听到猫叫声
 
+**落地备忘（2026-04-06）：** 以 `TranslatePage` + 子组件替代原 `AudioRecorder` 单文件方案；并含流式采样率、WS 断开、播放与重置等根因修复 — 详见 [phase8-batch-ui-2026-04-06.md](./phase8-batch-ui-2026-04-06.md)（实际改动含少量后端/配置，与上表「仅前端」不完全一致，以备忘为准）。
+
 ### Batch 2：静态文件服务 + 部署配置
 
 **目标：** `docker build && docker run` 启动一个自包含的服务，在单个端口上同时提供 API + WebSocket + 前端页面。
