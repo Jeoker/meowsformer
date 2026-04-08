@@ -21,7 +21,7 @@ python -m unittest discover tests
 
 | 文件 | 职责 |
 |------|------|
-| `tests/shared_params.py` | 纯常量：API provider 字符串、LLM 模型名、AI Builders URL、ChromaDB 路径、样本 ID、音频 stub、匹配分数、路由路径、品种偏好、异步等待时长等 |
+| `tests/shared_params.py` | 纯常量：LLM 模型名、ChromaDB 路径、样本 ID、音频 stub、匹配分数、路由路径、品种偏好、异步等待时长等 |
 | `tests/flet_mocks.py` | flet 控件 mock 类（`_Ctrl` / `_TextCtrl` / `_ListCtrl`）、`install_flet_mock()` 安装函数、统一的 `BaseMockPage`（合并 batch2/3/4 三种 `_MockPage` 变体，超集兼容） |
 | `tests/ws_stubs.py` | WebSocket 测试桩：`MockWebSocket`、`ws_connect_coro()`、`async_chunks()` |
 
@@ -49,10 +49,9 @@ python -m unittest discover tests
 | `test_batch2_ws_streaming.py` | WS Streaming | 31 | Batch 2 验证: 并发通信、Config/Stop、TaskGroup 异常、JSONDecodeError、Phase 5 标签、WS 事件回调、chunk generator |
 | `test_batch3_audio_playback.py` | Audio Playback | 25 | Batch 3 + flet-audio 升级验证: fta.Audio overlay 注册、release→update→play 调用顺序、DSP 处理、base64 播放、REST/Streaming 自动播放、dispose 清理 |
 | `test_batch4_ux_enhancements.py` | UX Enhancements | 37 | Batch 4 验证: WS 连接状态指示器、WebSocketConnectionError + on_state_change 回调、Snackbar 错误通知、录音计时器 (wall-clock 锚定)、自动降级 REST、历史记录 ExpansionTile 5 维标签、多条记录排序 |
-| `test_api_client.py` | API Provider Switch | 42 | 供应方工厂 (`get_openai_client`、`get_instructor_client`)、config 默认值、懒加载缓存隔离、LLM 模型名传播 |
-| `test_api_provider_switch.py` | API Provider E2E | 31 | 供应方端到端切换验证、config 条件分支、懒加载隔离、模型名传播 |
+| `test_api_client.py` | API Client | 30 | OpenAI 客户端工厂 (`get_openai_client`、`get_instructor_client`)、config 默认值、懒加载缓存隔离、LLM 模型名传播 |
 
-**总计: 330 个测试函数，全部可运行。** `unittest discover` 实际运行 330 个。`test_audio_services` 的 2 个为独立函数，非 `TestCase` 子类，不被 discover 发现（需单独运行该文件）。
+**总计: ~295 个测试函数，全部可运行。** `unittest discover` 实际运行 ~295 个。`test_audio_services` 的 2 个为独立函数，非 `TestCase` 子类，不被 discover 发现（需单独运行该文件）。
 
 ---
 
@@ -65,7 +64,7 @@ python -m unittest discover tests
 - **算法测试：** 确定性 fixture、数值容差 (`assertAlmostEqual`)
 - **FastAPI 端点：** 使用 `TestClient`，mock 所有 service 依赖
 - **硬编码值：** 跨文件重复的常量统一定义在 `tests/shared_params.py`；flet mock 基础设施来自 `tests/flet_mocks.py`；WS 测试桩来自 `tests/ws_stubs.py`
-- **Provider 区分：** `MODEL_OPENAI_DEFAULT = "gpt-4o"` 与 `MODEL_AI_BUILDERS_DEFAULT = "deepseek"` 是两个独立常量，不可合并——二者分别对应 openai / ai_builders 两个 provider 的真实 Settings 默认值
+- **LLM 模型常量：** `MODEL_OPENAI_DEFAULT = "gpt-4o"` 用于测试中验证默认模型名传播
 
 ---
 

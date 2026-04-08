@@ -132,18 +132,6 @@ Phase 7 分 4 个 Batch 串行推进，每个 Batch 独立走完 developer → r
 | **Batch 5** | **flet-audio 升级：Flet 0.82.2 + 原生应用内播放恢复** | ✅ **已完成** | [phase7-batch5.md](./batch-reports/phase7-batch5.md) |
 | Batch 6 | Web 浏览器兼容 | ❌ **已取消** | 改用 WSLg 桌面模式，见 [wsl-dev-setup-2026-03-15.md](./batch-reports/wsl-dev-setup-2026-03-15.md) |
 
-### API 供应方切换（边缘功能）✅ 已完成
-
-允许在 OpenAI 官方 API 与 ai-builders 兼容平台之间单点切换，仅需修改 `.env` 三行配置：
-
-```bash
-API_PROVIDER=ai_builders   # 切换到 ai-builders；默认 openai
-AI_BUILDER_TOKEN=sk_c...   # ai-builders token
-LLM_MODEL=deepseek         # 可选；ai-builders 默认 deepseek，可覆盖为 deepseek-chat 等
-```
-
-新增文件 `app/core/api_client.py`，修改 `config.py` + 5 个服务文件（均向下兼容）。详见 [batch-report](./batch-reports/api-provider-switch.md)。
-
 ---
 
 ### Phase 8 — Web Demo Sprint（进行中）

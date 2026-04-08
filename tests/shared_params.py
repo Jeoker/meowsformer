@@ -7,23 +7,17 @@ from __future__ import annotations
 
 import json
 
-# ── API providers ─────────────────────────────────────────────────────────────
-PROVIDER_OPENAI      = "openai"
-PROVIDER_AI_BUILDERS = "ai_builders"
+# ── API provider ──────────────────────────────────────────────────────────────
+PROVIDER_OPENAI = "openai"
 
-# ── LLM model defaults (one per provider) ────────────────────────────────────
-MODEL_OPENAI_DEFAULT      = "gpt-4o"
-MODEL_AI_BUILDERS_DEFAULT = "deepseek"
+# ── LLM model default ────────────────────────────────────────────────────────
+MODEL_OPENAI_DEFAULT = "gpt-4o"
 
-# ── Embedding model (shared across providers) ─────────────────────────────────
+# ── Embedding model ──────────────────────────────────────────────────────────
 EMBEDDING_MODEL = "text-embedding-3-small"
-
-# ── AI Builders endpoint ──────────────────────────────────────────────────────
-AI_BUILDER_BASE_URL = "https://space.ai-builders.com/backend/v1"
 
 # ── ChromaDB test paths ───────────────────────────────────────────────────────
 CHROMA_PATH_OPENAI  = "/tmp/chroma_openai"
-CHROMA_PATH_BUILDER = "/tmp/chroma_builder"
 CHROMA_PATH_DEFAULT = "/tmp/chroma"
 
 # ── Cat sample IDs ────────────────────────────────────────────────────────────

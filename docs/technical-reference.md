@@ -20,7 +20,7 @@
 │   ├── core/                             # 核心配置
 │   │   ├── __init__.py
 │   │   ├── config.py                     # Pydantic Settings (.env；含 WHISPER_LANGUAGE 可选)
-│   │   └── api_client.py               ★ API 供应方工厂 — 边缘功能 (openai / ai_builders 单点切换)
+│   │   └── api_client.py               ★ OpenAI 客户端工厂
 │   ├── data/                            ★ 数据定义层 — Phase 5
 │   │   ├── __init__.py
 │   │   └── meow_catalog.py             ★ 5 维标签分类体系 + 规则引擎
@@ -122,8 +122,7 @@
 │   ├── test_batch2_ws_streaming.py     # Phase 7 Batch 2 验证
 │   ├── test_batch3_audio_playback.py   # Phase 7 Batch 3 验证
 │   ├── test_batch4_ux_enhancements.py  # Phase 7 Batch 4 验证
-│   ├── test_api_client.py              # API provider 切换测试
-│   └── test_api_provider_switch.py     # API provider 端到端切换验证
+│   └── test_api_client.py              # API 客户端工厂测试
 │
 ├── docs/                                 # 项目文档
 │   ├── development-overview.md           # 项目概览、开发阶段、进度、路线图
@@ -198,33 +197,28 @@ main.py (Batch 1 后，auth 导入已全部移除)
 
 ### `app/core/api_client.py`（新增）
 
-唯一的供应方工厂，所有服务从此获取 OpenAI 客户端实例。
+OpenAI 客户端工厂，所有服务从此获取客户端实例。
 
 | 函数 | 签名 | 说明 |
 |------|------|------|
-| `get_openai_client` | `() -> OpenAI` | 按 `settings.API_PROVIDER` 返回配置好的 `OpenAI` 实例；不内置缓存，调用方应自行在模块级持有缓存引用 |
+| `get_openai_client` | `() -> OpenAI` | 返回 `OpenAI(api_key=settings.OPENAI_API_KEY)`；不内置缓存，调用方应自行在模块级持有缓存引用 |
 | `get_instructor_client` | `() -> instructor.Instructor` | 返回 `instructor.from_openai(get_openai_client())` 封装 |
 
-### `app/core/config.py`（新增字段）
+### `app/core/config.py`
 
 | 字段 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `API_PROVIDER` | `Literal["openai","ai_builders"]` | `"openai"` | 供应方选择，日常无需修改 |
-| `AI_BUILDER_TOKEN` | `str` | `""` | ai-builders Bearer token |
-| `AI_BUILDER_BASE_URL` | `str` | `"https://space.ai-builders.com/backend/v1"` | ai-builders API 基础 URL（MCP 指定，含 /v1） |
-| `LLM_MODEL` | `str` | `""` | 空时按 `API_PROVIDER` 自动解析：openai→gpt-4o，ai_builders→deepseek；可在 .env 中覆盖 |
+| `LLM_MODEL` | `str` | `"gpt-4o"` | 可在 .env 中覆盖 |
 
 ### 受影响的服务文件
 
-所有文件改动均向下兼容，默认配置下行为不变：
-
 | 文件 | 改动 |
 |------|------|
-| `transcription_service.py` | 增加模块级 `_client` 懒加载缓存，`_get_client()` 内调用 `get_openai_client()` |
-| `streaming_transcription_service.py` | `_get_client()` 内部改用 `get_openai_client()` |
-| `llm_service.py` | 增加模块级 `_client` 懒加载缓存；`model` 硬编码改为 `settings.LLM_MODEL` |
-| `sound_selection_service.py` | `_get_client()` 改用 `get_instructor_client()`；模型名参数化 |
-| `vector_store.py` | `_embedding_fn` 按 `API_PROVIDER` 条件初始化，ai-builders 分支传入 `api_key` 与 `api_base` |
+| `transcription_service.py` | 模块级 `_client` 懒加载缓存，`_get_client()` 内调用 `get_openai_client()` |
+| `streaming_transcription_service.py` | `_get_client()` 内部调用 `get_openai_client()` |
+| `llm_service.py` | 模块级 `_client` 懒加载缓存；`model` 使用 `settings.LLM_MODEL` |
+| `sound_selection_service.py` | `_get_client()` 调用 `get_instructor_client()`；模型名参数化 |
+| `vector_store.py` | `OpenAIEmbeddingFunction` 使用 `settings.OPENAI_API_KEY` |
 
 ---
 

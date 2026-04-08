@@ -48,15 +48,10 @@
 
 ---
 
-## 2. Provider 兼容性
+## 2. Provider 说明
 
-| 维度 | OpenAI | ai-builders |
-|------|--------|-------------|
-| `AsyncOpenAI(api_key=...)` | ✅ | ✅（仅加 `base_url`，transport 层一致） |
-| `AsyncOpenAI.audio.transcriptions.create()` | ✅ | ⚠️ 取决于 ai-builders 是否代理 Whisper 端点 |
-| `instructor.from_openai(AsyncOpenAI(...))` | ✅ Mode.TOOLS | ✅ Mode.JSON（与 sync 逻辑一致） |
-
-Whisper + ai-builders（⚠️）是既有问题，async 迁移不改变 provider 路由逻辑，原来能用就能用，不在本次范围。两套 provider 使用相同的 async 架构，`instructor.Mode` 分支逻辑在 async 下无需任何特殊处理。
+> **Batch 0 已移除 ai-builders 兼容层。** 项目现在仅使用 OpenAI API，无需 provider 分支逻辑。
+> async 工厂函数为单路径：`AsyncOpenAI(api_key=settings.OPENAI_API_KEY)`，`instructor.from_openai(client)` 默认 `Mode.TOOLS`。
 
 ---
 
@@ -81,17 +76,10 @@ def get_instructor_client() -> instructor.Instructor: ...
 
 # 新增
 def get_async_openai_client() -> AsyncOpenAI:
-    if settings.API_PROVIDER == "ai_builders":
-        return AsyncOpenAI(
-            api_key=settings.AI_BUILDER_TOKEN,
-            base_url=settings.AI_BUILDER_BASE_URL,
-        )
     return AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
 def get_async_instructor_client() -> instructor.AsyncInstructor:
     client = get_async_openai_client()
-    if settings.API_PROVIDER == "ai_builders":
-        return instructor.from_openai(client, mode=instructor.Mode.JSON)
     return instructor.from_openai(client)
 ```
 
@@ -379,8 +367,8 @@ async def _handle_stop(websocket, session):
 
 | 测试范围 | 方法 |
 |---------|------|
-| `get_async_openai_client()` — 两个 provider | mock `settings.API_PROVIDER`，断言返回 `AsyncOpenAI` 且 `api_key`/`base_url` 正确 |
-| `get_async_instructor_client()` — 两个 provider | 断言 mode 参数（TOOLS vs JSON） |
+| `get_async_openai_client()` | mock `settings.OPENAI_API_KEY`，断言返回 `AsyncOpenAI` 且 `api_key` 正确 |
+| `get_async_instructor_client()` | 断言返回 `AsyncInstructor`，默认 `Mode.TOOLS` |
 | `_call_whisper()` | mock `AsyncOpenAI.audio.transcriptions.create` 为 async，验证 `await` 调用 |
 | `generate_target_tags()` | mock async instructor `create`，验证 `await` 调用 + TargetTagSet 解析 |
 | 回归 | 330 个现有测试全部通过 |
@@ -403,8 +391,7 @@ async def _handle_stop(websocket, session):
 
 | 风险 | 概率 | 影响 | 缓解 |
 |------|------|------|------|
-| `instructor.from_openai(AsyncOpenAI)` 与 sync 版行为微妙不同 | 低 | LLM 返回解析失败 | Batch 1 集成测试覆盖两个 provider；`generate_target_tags` 有 fallback 默认标签 |
-| ai-builders 端点不支持 `AsyncOpenAI` 的某些 HTTP 行为 | 极低 | ai-builders 调用失败 | `AsyncOpenAI` 底层用 `httpx.AsyncClient`，标准 HTTP/1.1，与 sync 等价 |
+| `instructor.from_openai(AsyncOpenAI)` 与 sync 版行为微妙不同 | 低 | LLM 返回解析失败 | Batch 1 集成测试覆盖；`generate_target_tags` 有 fallback 默认标签 |
 | 滚动推测导致过多 LLM API 调用（每 2.5s 一次） | 中 | API 费用增加 | 可加去抖：仅在 SequenceMatcher 对比上次推测文本差异 > 0.3 时重新触发 |
 | `asyncio.CancelledError` 在 `instructor` 内部被捕获方式不符预期 | 低 | 推测任务 cancel 失败 | 在 `_speculative_analysis` 外层显式 catch，确保不逃逸 |
 | 现有 mock 了 `get_openai_client` 的测试受影响 | 低 | 测试误报 | 新增 async 函数为独立符号，不替换已有函数，现有 mock 不受影响 |

@@ -39,7 +39,7 @@
 **与本仓库对齐**
 
 - [`fly.toml`](../fly.toml)：`internal_port = 8080`，与镜像 `EXPOSE 8080` / `PORT` 一致。
-- 密钥勿写入镜像：`fly secrets set OPENAI_API_KEY=...`；若用 ai-builders：`API_PROVIDER`、`AI_BUILDER_TOKEN`、`AI_BUILDER_BASE_URL`（见 `app/core/config.py`）。
+- 密钥勿写入镜像：`fly secrets set OPENAI_API_KEY=...`。
 
 **常用命令**
 
