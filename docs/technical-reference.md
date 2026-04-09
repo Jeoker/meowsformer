@@ -122,7 +122,8 @@
 │   ├── test_batch2_ws_streaming.py     # Phase 7 Batch 2 验证
 │   ├── test_batch3_audio_playback.py   # Phase 7 Batch 3 验证
 │   ├── test_batch4_ux_enhancements.py  # Phase 7 Batch 4 验证
-│   └── test_api_client.py              # API 客户端工厂测试
+│   ├── test_api_client.py              # API 客户端工厂测试 (sync + async, Phase 9)
+│   └── test_phase9_streaming_optimization.py ★ Phase 9 滚动推测 + 并行 Stop 测试
 │
 ├── docs/                                 # 项目文档
 │   ├── development-overview.md           # 项目概览、开发阶段、进度、路线图
@@ -203,6 +204,8 @@ OpenAI 客户端工厂，所有服务从此获取客户端实例。
 |------|------|------|
 | `get_openai_client` | `() -> OpenAI` | 返回 `OpenAI(api_key=settings.OPENAI_API_KEY)`；不内置缓存，调用方应自行在模块级持有缓存引用 |
 | `get_instructor_client` | `() -> instructor.Instructor` | 返回 `instructor.from_openai(get_openai_client())` 封装 |
+| `get_async_openai_client` | `() -> AsyncOpenAI` | Phase 9 新增；异步版本，Streaming Pipeline 使用 |
+| `get_async_instructor_client` | `() -> instructor.AsyncInstructor` | Phase 9 新增；异步 instructor 封装 |
 
 ### `app/core/config.py`
 
@@ -215,9 +218,9 @@ OpenAI 客户端工厂，所有服务从此获取客户端实例。
 | 文件 | 改动 |
 |------|------|
 | `transcription_service.py` | 模块级 `_client` 懒加载缓存，`_get_client()` 内调用 `get_openai_client()` |
-| `streaming_transcription_service.py` | `_get_client()` 内部调用 `get_openai_client()` |
+| `streaming_transcription_service.py` | `_get_client()` 内部调用 `get_async_openai_client()`（Phase 9 迁移为 async） |
 | `llm_service.py` | 模块级 `_client` 懒加载缓存；`model` 使用 `settings.LLM_MODEL` |
-| `sound_selection_service.py` | `_get_client()` 调用 `get_instructor_client()`；模型名参数化 |
+| `sound_selection_service.py` | `_get_client()` 调用 `get_async_instructor_client()`（Phase 9 迁移为 async）；模型名参数化 |
 | `vector_store.py` | `OpenAIEmbeddingFunction` 使用 `settings.OPENAI_API_KEY` |
 
 ---
@@ -454,6 +457,10 @@ LLM 系统提示词将完整标签词汇表注入，约束 LLM 只在有效范�
 
 **主要函数：** `ws_translate(websocket)` — 主处理循环
 
+**滚动推测性执行（Phase 9）：** 每次中间转录（≥5 词）都取消旧推测任务、启动新推测。`_speculative_analysis()` 显式捕获 `asyncio.CancelledError`，不传播。
+
+**并行 Stop 序列（Phase 9）：** `_handle_stop()` 先 `asyncio.create_task(transcribe_final())` 启动最终转录，然后等待推测任务完成（最多 5s），两者并行执行。典型延迟从 3-6s 降至 1-2s。
+
 **断开：** 收到 ASGI `type == "websocket.disconnect"` 时必须退出循环，禁止再次 `receive()`（Starlette 否则抛 `Cannot call "receive" once a disconnect message has been received`）。
 
 ---
@@ -645,8 +652,9 @@ ws_endpoints.ws_translate()
       │  │    → transcribe_intermediate() → Whisper API            │
       │  │    → Server → {"type":"transcription", "is_final":false}│
       │  │                                                         │
-      │  │  文本达到 5 词以上 (首次)：                               │
-      │  │    → 异步启动 speculative LLM 分析                       │
+      │  │  文本达到 5 词以上 (每次中间转录, Phase 9 滚动推测)：       │
+      │  │    → 取消旧推测任务 (若存在)                              │
+      │  │    → 异步启动新 speculative LLM 分析                     │
       │  │    → generate_target_tags() → SpeculativeCache.store()  │
       │  │    → Server → {"type":"analysis_preview"}               │
       │  └─────────────────────────────────────────────────────────┘
@@ -654,11 +662,14 @@ ws_endpoints.ws_translate()
       │  ┌─────────────────── 停止 & 出结果 ──────────────────────┐
       │  │  Client → {"type": "stop"}                              │
       │  │                                                         │
-      │  │  1. 等待推测性 LLM 任务完成 (最多 5s)                    │
-      │  │  2. transcribe_final() → Whisper API 最终转录            │
-      │  │  3. Server → {"type":"transcription", "is_final":true}  │
+      │  │  Phase 9 并行: 同时启动:                                  │
+      │  │  ├─ asyncio.create_task(transcribe_final())              │
+      │  │  └─ 等待推测性 LLM 任务完成 (最多 5s)                    │
+      │  │  总耗时 = max(Whisper, 推测等待) ≈ 1-2s                  │
       │  │                                                         │
-      │  │  4. 判断是否复用缓存：                                    │
+      │  │  → Server → {"type":"transcription", "is_final":true}   │
+      │  │                                                         │
+      │  │  判断是否复用缓存：                                       │
       │  │     cache.is_similar(final_text) → ratio ≥ 0.7?         │
       │  │       → cache.get() 直接复用 target_tags (零延迟)        │
       │  │     else → generate_target_tags(final_text) (新调用)     │

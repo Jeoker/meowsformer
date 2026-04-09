@@ -23,7 +23,7 @@ import instructor
 import soundfile as sf
 from loguru import logger
 
-from app.core.api_client import get_instructor_client
+from app.core.api_client import get_async_instructor_client
 from app.core.config import settings
 from app.data.meow_catalog import TAG_TAXONOMY
 from app.schemas.ws_messages import (
@@ -43,13 +43,13 @@ ASSETS_DIR = Path(__file__).resolve().parent.parent.parent / "assets"
 
 # ── Instructor client (lazy-initialized) ─────────────────────────────────
 
-_client: Optional[instructor.Instructor] = None
+_client: Optional[instructor.AsyncInstructor] = None
 
 
-def _get_client() -> instructor.Instructor:
+def _get_client() -> instructor.AsyncInstructor:
     global _client
     if _client is None:
-        _client = get_instructor_client()
+        _client = get_async_instructor_client()
     return _client
 
 
@@ -107,7 +107,7 @@ async def generate_target_tags(text: str) -> TargetTagSet:
     user_prompt = f"用户对猫说的话: \"{text}\"\n\n请分析并输出目标标签。"
 
     try:
-        response = client.chat.completions.create(
+        response = await client.chat.completions.create(
             model=settings.LLM_MODEL,
             response_model=TargetTagSet,
             messages=[

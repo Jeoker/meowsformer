@@ -470,5 +470,481 @@ class TestLLMServiceLazyLoad(unittest.TestCase):
         self.assertIsNot(first, second)
 
 
+# ── Async migration imports ──────────────────────────────────────────────────
+import asyncio  # noqa: E402
+from unittest.mock import AsyncMock  # noqa: E402
+
+from app.core.api_client import get_async_openai_client, get_async_instructor_client  # noqa: E402
+import app.services.streaming_transcription_service as _sts  # noqa: E402
+import app.services.sound_selection_service as _sss  # noqa: E402
+
+from tests.shared_params import DUMMY_PCM_BYTES  # noqa: E402
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  7. get_async_openai_client()
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+class TestGetAsyncOpenAIClient(unittest.TestCase):
+    """get_async_openai_client() must use OPENAI_API_KEY and return AsyncOpenAI."""
+
+    def _call_with_mock(self, api_key: str = "sk-test") -> MagicMock:
+        with (
+            patch("app.core.api_client.settings") as mock_settings,
+            patch("app.core.api_client.AsyncOpenAI") as MockAsyncOpenAI,
+        ):
+            mock_settings.OPENAI_API_KEY = api_key
+            get_async_openai_client()
+            return MockAsyncOpenAI
+
+    def test_calls_async_openai_with_api_key(self) -> None:
+        MockAsyncOpenAI = self._call_with_mock("sk-async-key")
+        MockAsyncOpenAI.assert_called_once_with(api_key="sk-async-key")
+
+    def test_no_base_url_kwarg(self) -> None:
+        MockAsyncOpenAI = self._call_with_mock()
+        kwargs = MockAsyncOpenAI.call_args.kwargs
+        self.assertNotIn("base_url", kwargs)
+
+    def test_returns_async_openai_instance(self) -> None:
+        fake_instance = MagicMock(name="fake_async_openai")
+        with (
+            patch("app.core.api_client.settings") as mock_settings,
+            patch("app.core.api_client.AsyncOpenAI", return_value=fake_instance),
+        ):
+            mock_settings.OPENAI_API_KEY = _DUMMY_SK_KEY
+            result = get_async_openai_client()
+        self.assertIs(result, fake_instance)
+
+    def test_factory_creates_fresh_instance_each_call(self) -> None:
+        with (
+            patch("app.core.api_client.settings") as mock_settings,
+            patch("app.core.api_client.AsyncOpenAI") as MockAsyncOpenAI,
+        ):
+            mock_settings.OPENAI_API_KEY = _DUMMY_SK_KEY
+            MockAsyncOpenAI.side_effect = lambda **_kw: MagicMock()
+
+            c1 = get_async_openai_client()
+            c2 = get_async_openai_client()
+
+        self.assertIsNot(c1, c2)
+        self.assertEqual(MockAsyncOpenAI.call_count, 2)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  8. get_async_instructor_client() — async instructor wrapping
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+class TestGetAsyncInstructorClient(unittest.TestCase):
+    """get_async_instructor_client() must wrap get_async_openai_client() via instructor."""
+
+    def test_delegates_to_get_async_openai_client(self) -> None:
+        mock_async_openai = MagicMock()
+        with (
+            patch("app.core.api_client.get_async_openai_client", return_value=mock_async_openai) as mock_factory,
+            patch("app.core.api_client.instructor.from_openai", return_value=MagicMock()),
+        ):
+            get_async_instructor_client()
+
+        mock_factory.assert_called_once()
+
+    def test_passes_async_openai_client_to_instructor(self) -> None:
+        mock_async_openai = MagicMock()
+        with (
+            patch("app.core.api_client.get_async_openai_client", return_value=mock_async_openai),
+            patch("app.core.api_client.instructor.from_openai") as mock_from_openai,
+        ):
+            mock_from_openai.return_value = MagicMock()
+            get_async_instructor_client()
+
+        mock_from_openai.assert_called_once_with(mock_async_openai)
+
+    def test_returns_instructor_result(self) -> None:
+        mock_instructor_client = MagicMock(name="async_instructor_client")
+        with (
+            patch("app.core.api_client.get_async_openai_client", return_value=MagicMock()),
+            patch("app.core.api_client.instructor.from_openai", return_value=mock_instructor_client),
+        ):
+            result = get_async_instructor_client()
+
+        self.assertIs(result, mock_instructor_client)
+
+    def test_factory_creates_fresh_instance_each_call(self) -> None:
+        with (
+            patch("app.core.api_client.get_async_openai_client", return_value=MagicMock()),
+            patch("app.core.api_client.instructor.from_openai") as mock_from_openai,
+        ):
+            mock_from_openai.side_effect = lambda *a, **k: MagicMock()
+            c1 = get_async_instructor_client()
+            c2 = get_async_instructor_client()
+
+        self.assertIsNot(c1, c2)
+        self.assertEqual(mock_from_openai.call_count, 2)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  9. streaming_transcription_service._get_client() — async lazy-load
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+class TestStreamingTranscriptionServiceLazyLoad(unittest.TestCase):
+    """_get_client() must lazily create and cache the AsyncOpenAI client."""
+
+    def setUp(self) -> None:
+        _sts._client = None
+
+    def tearDown(self) -> None:
+        _sts._client = None
+
+    def test_first_call_calls_factory(self) -> None:
+        mock_client = MagicMock(name="sts_client")
+        with patch(
+            "app.services.streaming_transcription_service.get_async_openai_client",
+            return_value=mock_client,
+        ) as mock_factory:
+            _sts._get_client()
+
+        mock_factory.assert_called_once()
+
+    def test_first_call_returns_factory_result(self) -> None:
+        mock_client = MagicMock(name="sts_client")
+        with patch(
+            "app.services.streaming_transcription_service.get_async_openai_client",
+            return_value=mock_client,
+        ):
+            result = _sts._get_client()
+
+        self.assertIs(result, mock_client)
+
+    def test_first_call_populates_module_cache(self) -> None:
+        mock_client = MagicMock()
+        with patch(
+            "app.services.streaming_transcription_service.get_async_openai_client",
+            return_value=mock_client,
+        ):
+            _sts._get_client()
+
+        self.assertIs(_sts._client, mock_client)
+
+    def test_second_call_returns_same_instance(self) -> None:
+        mock_client = MagicMock()
+        with patch(
+            "app.services.streaming_transcription_service.get_async_openai_client",
+            return_value=mock_client,
+        ):
+            first = _sts._get_client()
+            second = _sts._get_client()
+
+        self.assertIs(first, second)
+
+    def test_factory_called_only_once_across_multiple_calls(self) -> None:
+        mock_client = MagicMock()
+        with patch(
+            "app.services.streaming_transcription_service.get_async_openai_client",
+            return_value=mock_client,
+        ) as mock_factory:
+            for _ in range(5):
+                _sts._get_client()
+
+        mock_factory.assert_called_once()
+
+    def test_warm_cache_skips_factory(self) -> None:
+        existing = MagicMock(name="pre_warmed_async_client")
+        _sts._client = existing
+
+        with patch(
+            "app.services.streaming_transcription_service.get_async_openai_client"
+        ) as mock_factory:
+            result = _sts._get_client()
+
+        mock_factory.assert_not_called()
+        self.assertIs(result, existing)
+
+    def test_reset_cache_forces_new_factory_call(self) -> None:
+        mock_client_1 = MagicMock(name="client1")
+        mock_client_2 = MagicMock(name="client2")
+
+        with patch(
+            "app.services.streaming_transcription_service.get_async_openai_client",
+            side_effect=[mock_client_1, mock_client_2],
+        ) as mock_factory:
+            first = _sts._get_client()
+            _sts._client = None
+            second = _sts._get_client()
+
+        self.assertEqual(mock_factory.call_count, 2)
+        self.assertIs(first, mock_client_1)
+        self.assertIs(second, mock_client_2)
+        self.assertIsNot(first, second)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 10. sound_selection_service._get_client() — async lazy-load
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+class TestSoundSelectionServiceLazyLoad(unittest.TestCase):
+    """_get_client() must lazily create and cache the AsyncInstructor client."""
+
+    def setUp(self) -> None:
+        _sss._client = None
+
+    def tearDown(self) -> None:
+        _sss._client = None
+
+    def test_first_call_calls_factory(self) -> None:
+        mock_instructor = MagicMock()
+        with patch(
+            "app.services.sound_selection_service.get_async_instructor_client",
+            return_value=mock_instructor,
+        ) as mock_factory:
+            _sss._get_client()
+
+        mock_factory.assert_called_once()
+
+    def test_first_call_returns_factory_result(self) -> None:
+        mock_instructor = MagicMock()
+        with patch(
+            "app.services.sound_selection_service.get_async_instructor_client",
+            return_value=mock_instructor,
+        ):
+            result = _sss._get_client()
+
+        self.assertIs(result, mock_instructor)
+
+    def test_first_call_populates_module_cache(self) -> None:
+        mock_instructor = MagicMock()
+        with patch(
+            "app.services.sound_selection_service.get_async_instructor_client",
+            return_value=mock_instructor,
+        ):
+            _sss._get_client()
+
+        self.assertIs(_sss._client, mock_instructor)
+
+    def test_second_call_returns_cached_instance(self) -> None:
+        mock_instructor = MagicMock()
+        with patch(
+            "app.services.sound_selection_service.get_async_instructor_client",
+            return_value=mock_instructor,
+        ):
+            first = _sss._get_client()
+            second = _sss._get_client()
+
+        self.assertIs(first, second)
+
+    def test_factory_called_only_once(self) -> None:
+        mock_instructor = MagicMock()
+        with patch(
+            "app.services.sound_selection_service.get_async_instructor_client",
+            return_value=mock_instructor,
+        ) as mock_factory:
+            for _ in range(4):
+                _sss._get_client()
+
+        mock_factory.assert_called_once()
+
+    def test_warm_cache_skips_factory(self) -> None:
+        existing = MagicMock(name="pre_warmed_async_instructor")
+        _sss._client = existing
+
+        with patch(
+            "app.services.sound_selection_service.get_async_instructor_client"
+        ) as mock_factory:
+            result = _sss._get_client()
+
+        mock_factory.assert_not_called()
+        self.assertIs(result, existing)
+
+    def test_reset_cache_forces_new_factory_call(self) -> None:
+        mock_c1 = MagicMock(name="c1")
+        mock_c2 = MagicMock(name="c2")
+        with patch(
+            "app.services.sound_selection_service.get_async_instructor_client",
+            side_effect=[mock_c1, mock_c2],
+        ) as mock_factory:
+            first = _sss._get_client()
+            _sss._client = None
+            second = _sss._get_client()
+
+        self.assertEqual(mock_factory.call_count, 2)
+        self.assertIs(first, mock_c1)
+        self.assertIs(second, mock_c2)
+        self.assertIsNot(first, second)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 11. _call_whisper() — async Whisper API call
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+class TestCallWhisperAsync(unittest.TestCase):
+    """_call_whisper() must await the async transcriptions.create call."""
+
+    def setUp(self) -> None:
+        _sts._client = None
+
+    def tearDown(self) -> None:
+        _sts._client = None
+
+    def test_call_whisper_awaits_transcription_create(self) -> None:
+        session = _sts.StreamingTranscriptionSession(sample_rate=16000)
+        session.add_chunk(DUMMY_PCM_BYTES)
+
+        mock_client = MagicMock()
+        mock_create = AsyncMock(return_value="hello world")
+        mock_client.audio.transcriptions.create = mock_create
+
+        with patch(
+            "app.services.streaming_transcription_service._get_client",
+            return_value=mock_client,
+        ):
+            result = asyncio.run(session._call_whisper())
+
+        mock_create.assert_awaited_once()
+        self.assertEqual(result, "hello world")
+
+    def test_call_whisper_passes_model_whisper1(self) -> None:
+        session = _sts.StreamingTranscriptionSession(sample_rate=16000)
+        session.add_chunk(DUMMY_PCM_BYTES)
+
+        mock_client = MagicMock()
+        mock_create = AsyncMock(return_value="text")
+        mock_client.audio.transcriptions.create = mock_create
+
+        with patch(
+            "app.services.streaming_transcription_service._get_client",
+            return_value=mock_client,
+        ):
+            asyncio.run(session._call_whisper())
+
+        call_kwargs = mock_create.call_args.kwargs
+        self.assertEqual(call_kwargs["model"], "whisper-1")
+        self.assertEqual(call_kwargs["response_format"], "text")
+        self.assertIn("file", call_kwargs)
+
+    def test_call_whisper_strips_whitespace(self) -> None:
+        session = _sts.StreamingTranscriptionSession(sample_rate=16000)
+        session.add_chunk(DUMMY_PCM_BYTES)
+
+        mock_client = MagicMock()
+        mock_create = AsyncMock(return_value="  padded text  ")
+        mock_client.audio.transcriptions.create = mock_create
+
+        with patch(
+            "app.services.streaming_transcription_service._get_client",
+            return_value=mock_client,
+        ):
+            result = asyncio.run(session._call_whisper())
+
+        self.assertEqual(result, "padded text")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 12. generate_target_tags() — async instructor LLM call
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+class TestGenerateTargetTagsAsync(unittest.TestCase):
+    """generate_target_tags() must await the async instructor create call."""
+
+    def setUp(self) -> None:
+        _sss._client = None
+
+    def tearDown(self) -> None:
+        _sss._client = None
+
+    def test_awaits_instructor_create(self) -> None:
+        from app.schemas.ws_messages import TargetTagSet
+
+        expected_tags = TargetTagSet(
+            emotion=["happy"],
+            intent=["greeting"],
+            acoustic=["high_pitch", "short"],
+            social_context=["near_owner"],
+            reasoning="测试推理",
+        )
+
+        mock_client = MagicMock()
+        mock_create = AsyncMock(return_value=expected_tags)
+        mock_client.chat.completions.create = mock_create
+
+        with (
+            patch("app.services.sound_selection_service._get_client", return_value=mock_client),
+            patch("app.services.sound_selection_service.settings") as mock_settings,
+        ):
+            mock_settings.LLM_MODEL = MODEL_OPENAI_DEFAULT
+            result = asyncio.run(_sss.generate_target_tags("你好小猫"))
+
+        mock_create.assert_awaited_once()
+        self.assertIsInstance(result, TargetTagSet)
+
+    def test_returns_llm_generated_tags(self) -> None:
+        from app.schemas.ws_messages import TargetTagSet
+
+        expected_tags = TargetTagSet(
+            emotion=["calm"],
+            intent=["expressing_comfort"],
+            acoustic=["mid_pitch"],
+            social_context=["near_owner"],
+            reasoning="推理说明",
+        )
+
+        mock_client = MagicMock()
+        mock_create = AsyncMock(return_value=expected_tags)
+        mock_client.chat.completions.create = mock_create
+
+        with (
+            patch("app.services.sound_selection_service._get_client", return_value=mock_client),
+            patch("app.services.sound_selection_service.settings") as mock_settings,
+        ):
+            mock_settings.LLM_MODEL = MODEL_OPENAI_DEFAULT
+            result = asyncio.run(_sss.generate_target_tags("乖猫咪"))
+
+        self.assertIs(result, expected_tags)
+        self.assertEqual(result.emotion, ["calm"])
+
+    def test_returns_default_tags_on_llm_failure(self) -> None:
+        from app.schemas.ws_messages import TargetTagSet
+
+        mock_client = MagicMock()
+        mock_create = AsyncMock(side_effect=Exception("API error"))
+        mock_client.chat.completions.create = mock_create
+
+        with (
+            patch("app.services.sound_selection_service._get_client", return_value=mock_client),
+            patch("app.services.sound_selection_service.settings") as mock_settings,
+        ):
+            mock_settings.LLM_MODEL = MODEL_OPENAI_DEFAULT
+            result = asyncio.run(_sss.generate_target_tags("test"))
+
+        self.assertIsInstance(result, TargetTagSet)
+        self.assertEqual(result.emotion, ["calm"])
+        self.assertEqual(result.intent, ["expressing_comfort"])
+        self.assertEqual(result.acoustic, ["mid_pitch", "medium_length"])
+        self.assertEqual(result.social_context, ["near_owner"])
+        self.assertIn("LLM调用失败", result.reasoning)
+
+    def test_passes_response_model_target_tag_set(self) -> None:
+        from app.schemas.ws_messages import TargetTagSet
+
+        mock_client = MagicMock()
+        mock_create = AsyncMock(return_value=TargetTagSet(reasoning="ok"))
+        mock_client.chat.completions.create = mock_create
+
+        with (
+            patch("app.services.sound_selection_service._get_client", return_value=mock_client),
+            patch("app.services.sound_selection_service.settings") as mock_settings,
+        ):
+            mock_settings.LLM_MODEL = MODEL_OPENAI_DEFAULT
+            asyncio.run(_sss.generate_target_tags("test"))
+
+        call_kwargs = mock_create.call_args.kwargs
+        self.assertIs(call_kwargs["response_model"], TargetTagSet)
+        self.assertEqual(call_kwargs["model"], MODEL_OPENAI_DEFAULT)
+
+
 if __name__ == "__main__":
     unittest.main()

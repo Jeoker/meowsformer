@@ -1,5 +1,5 @@
 import instructor
-from openai import OpenAI
+from openai import AsyncOpenAI, OpenAI
 
 from app.core.config import settings
 
@@ -24,4 +24,26 @@ def get_instructor_client() -> instructor.Instructor:
     call.
     """
     client = get_openai_client()
+    return instructor.from_openai(client)
+
+
+def get_async_openai_client() -> AsyncOpenAI:
+    """Return an async OpenAI client.
+
+    Creates a new instance on every call (no internal cache).
+    Callers that serve repeated requests should hold a module-level
+    cached reference to avoid re-initialising the HTTP connection pool.
+    """
+    return AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+
+
+def get_async_instructor_client() -> instructor.AsyncInstructor:
+    """Return an async instructor-patched OpenAI client.
+
+    Creates a new instance on every call (no internal cache).
+    Callers that serve repeated requests should hold a module-level
+    cached reference to avoid reconstructing the instructor wrapper on every
+    call.
+    """
+    client = get_async_openai_client()
     return instructor.from_openai(client)

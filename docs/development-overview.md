@@ -46,7 +46,7 @@ Meowsformer 是基于 FastAPI 的猫语翻译后端服务，将人类语音翻�
 1. **Legacy Pipeline (Phase 0–3):** 文件上传 → Whisper 转录 → RAG 科学上下文 → LLM 情绪分析 → DSP (VA 映射 + PSOLA 韵律变换) → 合成音频
 2. **Streaming Pipeline (Phase 5):** WebSocket 实时音频 → 分块 Whisper → LLM 目标标签生成 → 5 维加权匹配 → 真实猫叫录音播放
 
-**当前状态：** Phase 0–3, 5 后端完成。Phase 6 (Auth) 与 Phase 4 (CI/CD 生产化) 暂缓。Phase 7 (Flet 移动端流式翻译) 已完成。**Phase 8 (Web Demo Sprint) 进行中** — Vue 单页翻译 UI 已落地（见 [phase8-batch-ui-2026-04-06.md](./batch-reports/phase8-batch-ui-2026-04-06.md)）；Docker 多阶段与 Fly 配置见 [`deployment-fly.md`](./deployment-fly.md)。详见 [Phase 8 章节](#phase-8--web-demo-sprint) 与 [Sprint 计划](./batch-reports/phase8-sprint-plan.md)。330 个测试函数全部可运行。
+**当前状态：** Phase 0–3, 5 后端完成。Phase 6 (Auth) 与 Phase 4 (CI/CD 生产化) 暂缓。Phase 7 (Flet 移动端流式翻译) 已完成。**Phase 8 (Web Demo Sprint) 进行中**；**Phase 9 (Streaming Pipeline 延迟优化) 已完成** — Batch 1（AsyncOpenAI 迁移）+ Batch 2（滚动推测 + 并行 Stop）。详见 [Phase 9 章节](#phase-9--streaming-pipeline-延迟优化)。331 个测试函数全部可运行。
 
 ---
 
@@ -63,6 +63,7 @@ Meowsformer 是基于 FastAPI 的猫语翻译后端服务，将人类语音翻�
 | **Phase 6** | 全栈前端 + JWT 认证 | 暂缓 |
 | **Phase 7** | **Flet 移动端流式翻译** — 解除阻塞 → WS 接入 → 音频播放 → UX | **Done** (Batch 1-4 ✅) |
 | **Phase 8** | **Web Demo Sprint** — 激活 Vue 前端 → Tailwind 打磨 → 一体化云端部署 → 可分享 URL | **进行中**（UI 批次见 batch 报告） |
+| **Phase 9** | **Streaming Pipeline 延迟优化** — AsyncOpenAI + 滚动推测 + 并行 Stop | **Done** (Batch 1-2 ✅) |
 
 ---
 
@@ -176,6 +177,19 @@ Phase 7 分 4 个 Batch 串行推进，每个 Batch 独立走完 developer → r
 | Batch 3 | 云端部署 | Fly.io（`fly deploy`）；公开 URL 端到端验证 |
 
 **工作流：** 采用 Sprint Mode（见 `dev-workflow.mdc`），跳过 reviewer/test-engineer 循环，PM 通过浏览器手动验证。
+
+---
+
+### Phase 9 — Streaming Pipeline 延迟优化（进行中）
+
+> **决策记录 (2026-04-08)：** 用户松开按钮到收到猫叫音频典型延迟 3–6s、最差 11s。三个根因：sync OpenAI 客户端阻塞 event loop、stop 处理完全串行、推测性执行只触发一次。目标：典型 → 1–2s，最差 → 3–4s。
+
+| Batch | 目标 | 状态 | 详细报告 |
+|-------|------|------|---------|
+| Batch 1 | AsyncOpenAI 基础设施迁移（sync → async transport） | ✅ 已完成 | [phase9-batch1.md](./batch-reports/phase9-batch1.md) |
+| Batch 2 | 滚动推测 + 并行 Stop | ✅ 已完成 | [phase9-batch2.md](./batch-reports/phase9-batch2.md) |
+
+**优化方案文档：** [phase9-latency-optimization-plan.md](./batch-reports/phase9-latency-optimization-plan.md)
 
 ---
 

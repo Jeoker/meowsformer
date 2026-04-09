@@ -146,8 +146,10 @@ async def ws_translate(websocket: WebSocket) -> None:
                             ).model_dump()
                         )
 
-                        # Speculative LLM call if enough words
-                        if _word_count(text) >= 5 and session._speculative_task is None:
+                        # Rolling speculative LLM — cancel stale, fire fresh
+                        if _word_count(text) >= 5:
+                            if session._speculative_task and not session._speculative_task.done():
+                                session._speculative_task.cancel()
                             logger.info(
                                 "Firing speculative LLM (text: '{}'...)",
                                 text[:30],
@@ -176,7 +178,6 @@ async def _speculative_analysis(
         tags = await generate_target_tags(text)
         session.speculative_cache.store(text, tags)
 
-        # Send analysis preview
         primary_emotion = tags.emotion[0] if tags.emotion else "unknown"
         primary_intent = tags.intent[0] if tags.intent else "unknown"
 
@@ -186,6 +187,8 @@ async def _speculative_analysis(
                 intent=primary_intent,
             ).model_dump()
         )
+    except asyncio.CancelledError:
+        logger.debug("Speculative analysis cancelled (superseded by newer text)")
     except Exception as e:
         logger.error("Speculative analysis failed: {}", e)
 
@@ -196,18 +199,27 @@ async def _handle_stop(
 ) -> None:
     """Handle the stop signal: final transcription → result."""
     try:
-        # Wait for any running speculative task
+        # Phase 1: final transcription and speculative wait run in parallel
+        final_transcription_task = asyncio.create_task(
+            session.transcription.transcribe_final()
+        )
+
         if session._speculative_task and not session._speculative_task.done():
             try:
                 await asyncio.wait_for(session._speculative_task, timeout=5.0)
             except asyncio.TimeoutError:
-                logger.warning("Speculative task timed out; proceeding with fresh LLM call")
+                logger.warning("Speculative task timed out")
                 session._speculative_task.cancel()
+            except asyncio.CancelledError:
+                final_transcription_task.cancel()
+                raise
 
-        # Final transcription
-        final_text = await session.transcription.transcribe_final()
+        try:
+            final_text = await final_transcription_task
+        except Exception as e:
+            logger.warning("Final transcription task failed, using latest intermediate: {}", e)
+            final_text = session.transcription.latest_text
 
-        # Send final transcription
         await websocket.send_json(
             WSTranscriptionMessage(text=final_text, is_final=True).model_dump()
         )
@@ -216,7 +228,7 @@ async def _handle_stop(
             await _send_error(websocket, "No speech detected")
             return
 
-        # Decide whether to reuse cached tags or call LLM again
+        # Phase 2: decide tag source
         if session.speculative_cache.is_similar(final_text):
             logger.info("Reusing cached LLM result (text similar)")
             target_tags = session.speculative_cache.get()
@@ -228,7 +240,7 @@ async def _handle_stop(
             await _send_error(websocket, "Failed to generate target tags")
             return
 
-        # Find best match and encode
+        # Phase 3: match + encode + send
         result = await select_and_encode(
             target_tags=target_tags,
             breed_preference=session.breed_preference,
@@ -238,10 +250,8 @@ async def _handle_stop(
             await _send_error(websocket, "No matching cat sound found")
             return
 
-        # Fill in the transcription
         result.transcription = final_text
 
-        # Send final result
         await websocket.send_json(
             WSResultMessage(
                 transcription=final_text,

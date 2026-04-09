@@ -49,9 +49,11 @@ python -m unittest discover tests
 | `test_batch2_ws_streaming.py` | WS Streaming | 31 | Batch 2 验证: 并发通信、Config/Stop、TaskGroup 异常、JSONDecodeError、Phase 5 标签、WS 事件回调、chunk generator |
 | `test_batch3_audio_playback.py` | Audio Playback | 25 | Batch 3 + flet-audio 升级验证: fta.Audio overlay 注册、release→update→play 调用顺序、DSP 处理、base64 播放、REST/Streaming 自动播放、dispose 清理 |
 | `test_batch4_ux_enhancements.py` | UX Enhancements | 37 | Batch 4 验证: WS 连接状态指示器、WebSocketConnectionError + on_state_change 回调、Snackbar 错误通知、录音计时器 (wall-clock 锚定)、自动降级 REST、历史记录 ExpansionTile 5 维标签、多条记录排序 |
-| `test_api_client.py` | API Client | 30 | OpenAI 客户端工厂 (`get_openai_client`、`get_instructor_client`)、config 默认值、懒加载缓存隔离、LLM 模型名传播 |
+| `test_api_client.py` | API Client | 59 | OpenAI 客户端工厂（sync + async）、config 默认值、懒加载缓存隔离、LLM 模型名传播、Phase 9 async 迁移（`AsyncOpenAI` / `AsyncInstructor` 工厂、streaming/sound_selection lazy-load、`_call_whisper` await、`generate_target_tags` await + fallback） |
 
-**总计: ~295 个测试函数，全部可运行。** `unittest discover` 实际运行 ~295 个。`test_audio_services` 的 2 个为独立函数，非 `TestCase` 子类，不被 discover 发现（需单独运行该文件）。
+| `test_phase9_streaming_optimization.py` | Phase 9 Streaming | 10 | 滚动推测（取消/重启/短文本不触发/CancelledError 处理）、并行 Stop（结构性并行验证/推测命中/未命中/超时/外层取消传播/转录失败降级） |
+
+**总计: ~333 个测试函数，全部可运行。** `unittest discover` 实际运行 331 个。`test_audio_services` 的 2 个为独立函数，非 `TestCase` 子类，不被 discover 发现（需单独运行该文件）。
 
 ---
 

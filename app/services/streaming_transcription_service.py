@@ -24,20 +24,20 @@ import numpy as np
 import soundfile as sf
 from loguru import logger
 
-from app.core.api_client import get_openai_client
+from app.core.api_client import get_async_openai_client
 from app.core.config import settings
 
 if TYPE_CHECKING:
-    from openai import OpenAI
+    from openai import AsyncOpenAI
 
-# Lazy-initialized OpenAI client
-_client: Optional["OpenAI"] = None
+# Lazy-initialized async OpenAI client
+_client: Optional["AsyncOpenAI"] = None
 
 
-def _get_client() -> "OpenAI":
+def _get_client() -> "AsyncOpenAI":
     global _client
     if _client is None:
-        _client = get_openai_client()
+        _client = get_async_openai_client()
     return _client
 
 
@@ -143,7 +143,7 @@ class StreamingTranscriptionSession:
                 lang = (settings.WHISPER_LANGUAGE or "").strip()
                 if lang:
                     kw["language"] = lang
-                transcription = client.audio.transcriptions.create(**kw)
+                transcription = await client.audio.transcriptions.create(**kw)
 
             return transcription.strip() if isinstance(transcription, str) else str(transcription).strip()
 
