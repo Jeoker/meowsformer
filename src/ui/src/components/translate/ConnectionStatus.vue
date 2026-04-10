@@ -6,13 +6,13 @@ const props = defineProps<{
 }>();
 
 const labels: Record<StreamingState, string> = {
-  idle: "就绪",
-  connecting: "连接中",
-  connected: "已连接",
-  recording: "正在聆听",
-  processing: "分析匹配中",
-  result: "本轮完成",
-  error: "出错了",
+  idle: "Ready",
+  connecting: "Connecting",
+  connected: "Connected",
+  recording: "Listening",
+  processing: "Matching",
+  result: "Done",
+  error: "Error",
 };
 
 const styles: Record<StreamingState, string> = {

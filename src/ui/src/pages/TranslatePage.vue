@@ -76,7 +76,7 @@ async function handleStart() {
       />
 
       <footer class="pt-4 text-center text-[11px] text-gray-600 leading-relaxed">
-        匹配结果来自科学语料库与多维标签引擎，非随机播放。
+        Matches come from the scientific corpus and multi-dimensional tag engine—never random playback.
       </footer>
     </div>
   </div>

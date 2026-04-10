@@ -38,7 +38,7 @@ const startDisabled = computed(
         class="absolute inset-0 bg-white/10 opacity-0 transition group-hover:opacity-100"
         aria-hidden="true"
       />
-      <span class="relative">开始录音</span>
+      <span class="relative">Start recording</span>
     </button>
 
     <button
@@ -53,7 +53,7 @@ const startDisabled = computed(
           class="h-3 w-3 rounded-full bg-rose-400 ring-4 ring-rose-500/30 animate-pulse"
           aria-hidden="true"
         />
-        停止录音
+        Stop recording
       </span>
     </button>
 
@@ -63,7 +63,7 @@ const startDisabled = computed(
              transition hover:border-gray-500 hover:bg-gray-800/80"
       @click="emit('reset')"
     >
-      重置
+      Reset
     </button>
   </div>
 </template>

@@ -10,7 +10,7 @@ defineProps<{
 <template>
   <section class="space-y-3">
     <h2 class="text-[10px] font-semibold uppercase tracking-widest text-gray-500">
-      本轮回合
+      This round
     </h2>
     <ResultCard
       :transcription="result.transcription"

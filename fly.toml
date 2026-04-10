@@ -21,7 +21,7 @@ primary_region = 'ewr'
 # Startup: Chroma + RAG init + tagged samples can take ~10–15s on cold boot.
 [[http_service.checks]]
   grace_period = "20s"
-  interval = "120s"
+  interval = "60s"
   method = "GET"
   timeout = "10s"
   path = "/health"

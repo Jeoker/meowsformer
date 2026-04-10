@@ -18,7 +18,7 @@ defineProps<{
     <p class="text-sm sm:text-base text-gray-400 max-w-md mx-auto leading-relaxed">
       {{
         subtitle ??
-        "对着麦克风说话，系统会把你的语义变成一帧有依据的猫叫回应。"
+        "Speak into the microphone—the system turns what you mean into an evidence-based cat vocal response."
       }}
     </p>
   </header>

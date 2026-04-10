@@ -9,7 +9,7 @@ defineProps<{
 <template>
   <div class="rounded-2xl border border-white/5 bg-gray-900/40 p-4 backdrop-blur-sm">
     <label class="block text-xs font-medium uppercase tracking-wider text-gray-500 mb-2">
-      品种偏好（可选）
+      Breed preference (optional)
     </label>
     <select
       v-model="model"
@@ -18,11 +18,9 @@ defineProps<{
              focus:border-meow-600 focus:outline-none focus:ring-1 focus:ring-meow-500
              disabled:cursor-not-allowed disabled:opacity-50"
     >
-      <option value="">自动</option>
-      <option value="Maine Coon">Maine Coon · 缅因</option>
-      <option value="European Shorthair">
-        European Shorthair · 欧洲短毛
-      </option>
+      <option value="">Auto</option>
+      <option value="Maine Coon">Maine Coon</option>
+      <option value="European Shorthair">European Shorthair</option>
     </select>
   </div>
 </template>

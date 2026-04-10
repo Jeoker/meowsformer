@@ -1,5 +1,5 @@
 <!--
-  Meowsformer — 流式管线结果卡片（播放与标签）
+  Meowsformer — streaming pipeline result card (playback + tags)
 -->
 <script setup lang="ts">
 import { watch } from "vue";
@@ -49,10 +49,10 @@ const colorMap = {
   >
     <div>
       <p class="text-[10px] font-semibold uppercase tracking-widest text-gray-500 mb-1.5">
-        你说的是
+        You said
       </p>
       <p class="text-lg text-gray-100 leading-snug">
-        「{{ transcription }}」
+        “{{ transcription }}”
       </p>
     </div>
 
@@ -103,7 +103,7 @@ const colorMap = {
       v-if="sample"
       class="text-xs text-gray-500 tabular-nums"
     >
-      样本 {{ sample.sample_id }} · {{ sample.breed }} · {{ sample.context }}
+      Sample {{ sample.sample_id }} · {{ sample.breed }} · {{ sample.context }}
     </p>
 
     <button
@@ -121,13 +121,13 @@ const colorMap = {
       </span>
       <div class="min-w-0 flex-1">
         <p class="text-sm font-semibold text-meow-200">
-          {{ playbackState === "playing" ? "暂停猫叫" : "播放猫叫" }}
+          {{ playbackState === "playing" ? "Pause meow" : "Play meow" }}
         </p>
         <p
           v-if="sample"
           class="text-xs text-gray-500 mt-0.5"
         >
-          匹配度 {{ (sample.match_score * 100).toFixed(1) }}%
+          Match {{ (sample.match_score * 100).toFixed(1) }}%
         </p>
       </div>
     </button>

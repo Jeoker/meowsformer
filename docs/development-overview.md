@@ -46,7 +46,7 @@ Meowsformer 是基于 FastAPI 的猫语翻译后端服务，将人类语音翻�
 1. **Legacy Pipeline (Phase 0–3):** 文件上传 → Whisper 转录 → RAG 科学上下文 → LLM 情绪分析 → DSP (VA 映射 + PSOLA 韵律变换) → 合成音频
 2. **Streaming Pipeline (Phase 5):** WebSocket 实时音频 → 分块 Whisper → LLM 目标标签生成 → 5 维加权匹配 → 真实猫叫录音播放
 
-**当前状态：** Phase 0–3, 5 后端完成。Phase 6 (Auth) 与 Phase 4 (CI/CD 生产化) 暂缓。Phase 7 (Flet 移动端流式翻译) 已完成。**Phase 8 (Web Demo Sprint) 进行中**；**Phase 9 (Streaming Pipeline 延迟优化) 已完成** — Batch 1（AsyncOpenAI 迁移）+ Batch 2（滚动推测 + 并行 Stop）。详见 [Phase 9 章节](#phase-9--streaming-pipeline-延迟优化)。331 个测试函数全部可运行。
+**当前状态：** Phase 0–3, 5 后端完成。Phase 6 (Auth) 与 Phase 4 (CI/CD 生产化) 暂缓。Phase 7 (Flet 移动端流式翻译) 已完成。**Phase 8 (Web Demo Sprint) 已完成**；**Phase 9 (Streaming Pipeline 延迟优化) 已完成** 详见 [Phase 9 章节](#phase-9--streaming-pipeline-延迟优化)。**Phase 10 (AdSense 等)** 进行中（Batch 1 `/about` 已完成），详见 [Phase 10](#phase-10--adsense-展示) 与 [phase10-adsense-plan.md](./batch-reports/phase10-adsense-plan.md)。331 个测试函数全部可运行。
 
 ---
 
@@ -64,6 +64,7 @@ Meowsformer 是基于 FastAPI 的猫语翻译后端服务，将人类语音翻�
 | **Phase 7** | **Flet 移动端流式翻译** — 解除阻塞 → WS 接入 → 音频播放 → UX | **Done** (Batch 1-4 ✅) |
 | **Phase 8** | **Web Demo Sprint** — 激活 Vue 前端 → Tailwind 打磨 → 一体化云端部署 → 可分享 URL | **进行中**（UI 批次见 batch 报告） |
 | **Phase 9** | **Streaming Pipeline 延迟优化** — AsyncOpenAI + 滚动推测 + 并行 Stop | **Done** (Batch 1-2 ✅) |
+| **Phase 10** | **变现** — `/about`、AdSense、`ads.txt`、隐私/CMP、Ko-fi | **进行中**（Batch 1 ✅） |
 
 ---
 
@@ -193,6 +194,20 @@ Phase 7 分 4 个 Batch 串行推进，每个 Batch 独立走完 developer → r
 
 ---
 
+### Phase 10 — 变现（AdSense / Ko-fi）
+
+<span id="phase-10--adsense-展示"></span>
+
+Vue 静态站由 FastAPI 托管；需 HTTPS。不含 Google Ads API、Flet 内嵌广告。
+
+| 项 | 说明 |
+|----|------|
+| **进度与 Batch** | [phase10-adsense-plan.md](./batch-reports/phase10-adsense-plan.md) |
+| **工作流** | Sprint Mode |
+| **状态** | Batch 1 ✅（`/about` 科学页 + `vue-router`）；Batch 2–3 待办 |
+
+---
+
 ### Phase 6 — Auth & Frontend ⏸ 暂缓
 
 - Batch 1 已移除所有 auth 导入，`app/auth/` 模块推迟到后续阶段实现。
@@ -263,7 +278,8 @@ MEOWSFORMER_FLET_VIEW=desktop flet run -m src.flet_mobile.app
 
 | 阶段 | 内容 | 备注 |
 |------|------|------|
-| **Phase 8 — Web Demo Sprint** | **Vue 前端激活 + 一体化云端部署** | **准备中，下一个要做的阶段**；详见 [sprint 计划](./batch-reports/phase8-sprint-plan.md) |
+| **Phase 8 — Web Demo Sprint** | **Vue 前端激活 + 一体化云端部署** | 已完成；详见 [sprint 计划](./batch-reports/phase8-sprint-plan.md) |
+| **Phase 10 — 变现** | AdSense、`ads.txt`、隐私/CMP、Ko-fi | Batch 1 ✅；详见 [phase10-adsense-plan.md](./batch-reports/phase10-adsense-plan.md) |
 | Phase 6 — Auth | JWT 认证 (`app/auth/`)、前端认证组件 | 暂缓，Phase 8 后视需求决定 |
 | Phase 4 — 部署加固 | CI/CD、生产化加固 | Phase 8 包含基础 Dockerfile + 云部署；CI/CD 后续补充 |
 | Phase 5 补充测试 | sample_matcher, streaming_transcription, sound_selection, ws_endpoints | 可穿插完成 |
@@ -281,4 +297,5 @@ MEOWSFORMER_FLET_VIEW=desktop flet run -m src.flet_mobile.app
 | [`wsl2-audio-setup.md`](./wsl2-audio-setup.md) | WSL2 麦克风录音配置 |
 | [`batch-reports/`](./batch-reports/) | 每轮 Batch 的详细开发报告（修改文件、技术方案、验收结果） |
 | [`batch-reports/phase8-sprint-plan.md`](./batch-reports/phase8-sprint-plan.md) | **Phase 8 Web Demo Sprint 详细计划**（技术路线转向决策、Batch 拆分、部署架构、developer 沟通模板） |
+| [`batch-reports/phase10-adsense-plan.md`](./batch-reports/phase10-adsense-plan.md) | Phase 10 进度：Batch 拆分、已完成项、验收条件、参考链接 |
 | [`deployment-fly.md`](./deployment-fly.md) | Docker 镜像、`fly.toml`、Fly.io 命令、计费与官方文档链接 |
