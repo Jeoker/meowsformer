@@ -3,7 +3,7 @@
 **工作流：** Sprint Mode（见 `.cursor/rules/dev-workflow.mdc`）  
 **前置：** 公开 HTTPS 域名（生产站点）
 
-**状态：** 进行中 — Batch 1 已完成；Batch 2–3 未开始。
+**状态：** 进行中 — Batch 1–2 已完成；Batch 3 未开始。
 
 ---
 
@@ -32,7 +32,7 @@ Batch 1：内容页 → Batch 2：广告与合规 → Batch 3：提交审核 + �
 | Batch | 内容 | 状态 |
 |-------|------|------|
 | 1 | 科学内容页 `/about`（审核与 SEO） | ✅ |
-| 2 | `ads.txt`、手动广告单元、Ko-fi、`/privacy`、CMP | 待办 |
+| 2 | `ads.txt`、手动广告单元、Ko-fi、`/privacy`、CMP | ✅ |
 | 3 | 提交 AdSense 审核 + 推广（与审核同日） | 待办 |
 
 ---
@@ -49,17 +49,40 @@ Batch 1：内容页 → Batch 2：广告与合规 → Batch 3：提交审核 + �
 
 ---
 
-## 5. Batch 2 — 待办（要点说明）
+## 5. Batch 2 — 记录（已完成）
 
-**ads.txt** — 控制台注册站点、验证所有权后，将发布商 ID 写入 `src/ui/public/ads.txt`，构建后根路径可抓取。
+**设计意图：** 3 个手动广告单元（不用 Auto ads），CMP 同意横幅控制 AdSense 脚本加载顺序，Ko-fi 导航栏链接，`/privacy` 隐私政策页。
 
-**广告形态 — 用手动单元，不用 Auto ads：** Auto ads 会把广告插到任意位置，容易压在 **录音区 / 结果卡** 上，直接伤核心交互；改为在固定组件内放 **指定尺寸** 单元（例如结果卡下 300×250、About 文末 728×90），单份全局脚本 + `onMounted` push，路由切换不主动刷新单元（遵守政策）。
+**广告位设计（3 个手动单元）：**
 
-**Ko-fi** — Header 或结果区放官方按钮即可，无后端需求。
+| # | 页面 | 位置 | 占位 Slot ID | 理由 |
+|---|------|------|-------------|------|
+| Ad-1 | `/` TranslatePage | ResultSection 下方、footer 上方 | `AD_SLOT_RESULT` | 交互完成后的自然停顿点；`v-if="result"` 条件渲染，首次访问零广告 |
+| Ad-2 | `/about` AboutPage | Meowsic 与 Five Dimensions 节之间 | `AD_SLOT_ABOUT_MID` | 研究背景→技术细节的内容转折间隙 |
+| Ad-3 | `/about` AboutPage | FAQ 之后、disclaimer footer 之前 | `AD_SLOT_ABOUT_BOTTOM` | 经典文末广告位，深度阅读用户价值最高 |
 
-**隐私政策** — AdSense 要求可访问说明（Cookie、第三方广告数据）；可用生成器产出正文，挂 `/privacy` 并在页脚链出。
+**交付清单：**
 
-**EEA / CMP** — 部署在 Fly.io 即全球可达，**EEA 用户必然出现**，须在同意后再加载广告脚本；Cookiebot 等免费层或 Google 认证 CMP 均可，关键是 **顺序与同意状态** 与 AdSense 一致。
+| 类别 | 文件 | 说明 |
+|------|------|------|
+| 公共资源 | `src/ui/public/ads.txt` | 占位 publisher ID `ca-pub-XXXXXXXXXXXXXXXX` |
+| 同意管理 | `src/ui/src/composables/useConsent.ts` | 单例 consent 状态 + AdSense 脚本条件加载 |
+| 广告组件 | `src/ui/src/components/ads/AdUnit.vue` | consent accepted 才渲染 `<ins>`；`onMounted` push |
+| 同意横幅 | `src/ui/src/components/ads/ConsentBanner.vue` | fixed bottom，Accept/Decline，仅 pending 时显示 |
+| 隐私政策 | `src/ui/src/pages/PrivacyPage.vue` | 5 章节英文（数据收集、Cookie、第三方、权利、联系） |
+| 路由 | `src/ui/src/router/index.ts` | 新增 `/privacy` |
+| 全局布局 | `src/ui/src/App.vue` | +ConsentBanner、+Ko-fi nav link、+全局 footer（Privacy Policy · ©） |
+| 翻译页 | `src/ui/src/pages/TranslatePage.vue` | +Ad-1（条件渲染） |
+| 内容页 | `src/ui/src/pages/AboutPage.vue` | +Ad-2（文中）、+Ad-3（文末） |
+| 类型声明 | `src/ui/src/env.d.ts` | `Window.adsbygoogle` 全局类型 |
+
+**验收：** `npm run build` 通过（vue-tsc + Vite）；`python -m unittest discover tests` 331 个测试全部通过。
+
+**上线前须替换的占位符：**
+- `ca-pub-XXXXXXXXXXXXXXXX` → 真实 AdSense publisher ID（`useConsent.ts` + `ads.txt`）
+- `AD_SLOT_RESULT` / `AD_SLOT_ABOUT_MID` / `AD_SLOT_ABOUT_BOTTOM` → AdSense 控制台创建的广告单元 ID
+- `https://ko-fi.com/PLACEHOLDER` → 真实 Ko-fi 页面 URL
+- `privacy@meowsformer.example` → 真实联系邮箱
 
 ---
 

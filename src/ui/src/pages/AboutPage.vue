@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import AdUnit from "../components/ads/AdUnit.vue";
+
 const zenodoCatMeows = "https://doi.org/10.5281/zenodo.4007940";
 const zenodoMeowsic = "https://doi.org/10.5281/zenodo.3245999";
 const meowsicPortal =
@@ -95,6 +97,10 @@ const meowsicPortal =
         </p>
       </section>
 
+      <div class="my-6">
+        <AdUnit slot-id="AD_SLOT_ABOUT_MID" />
+      </div>
+
       <section class="space-y-4">
         <h2 class="text-xl font-semibold text-white">
           Five tag dimensions in Meowsformer
@@ -190,6 +196,10 @@ const meowsicPortal =
           </div>
         </dl>
       </section>
+
+      <div class="mt-6">
+        <AdUnit slot-id="AD_SLOT_ABOUT_BOTTOM" />
+      </div>
 
       <footer class="pt-4 border-t border-white/10 text-sm text-gray-500 leading-relaxed">
         Meowsformer is an independent project that indexes and matches public

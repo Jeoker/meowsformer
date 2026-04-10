@@ -8,6 +8,7 @@ import RecordingDeck from "../components/translate/RecordingDeck.vue";
 import LiveFeed from "../components/translate/LiveFeed.vue";
 import ErrorBanner from "../components/translate/ErrorBanner.vue";
 import ResultSection from "../components/translate/ResultSection.vue";
+import AdUnit from "../components/ads/AdUnit.vue";
 
 const breedPreference = ref("");
 
@@ -73,6 +74,12 @@ async function handleStart() {
       <ResultSection
         v-if="result"
         :result="result"
+      />
+
+      <AdUnit
+        v-if="result"
+        slot-id="AD_SLOT_RESULT"
+        class="mt-4"
       />
 
       <footer class="pt-4 text-center text-[11px] text-gray-600 leading-relaxed">

@@ -59,6 +59,8 @@
 │   │   ├── bioacoustic_player.py         # sound_id 映射本地样本 (flet-audio 0.82.2: fta.Audio 应用内播放, release→update→play 顺序)
 │   │   └── theme.py                      # 视觉 Token
 │   └── ui/                               # 前端 Vue SPA
+│       ├── public/
+│       │   └── ads.txt                  ★ Phase 10 — AdSense 发布商声明（占位 ID）
 │       ├── index.html
 │       ├── package.json                  # Vue 3, Tailwind CSS
 │       ├── package-lock.json
@@ -68,21 +70,27 @@
 │       ├── tsconfig.json, tsconfig.node.json
 │       └── src/
 │           ├── main.ts                   # Vue 入口
-│           ├── App.vue                   # 挂载 TranslatePage（Phase 8）
+│           ├── App.vue                   # 路由壳：nav + RouterView + 全局 footer + ConsentBanner（Phase 10）
 │           ├── index.css                 # Tailwind + `.bg-app-gradient`
 │           ├── env.d.ts                  # Vue 模块类型声明
 │           ├── context/                  # 未实现 (auth 状态管理)，暂缓
 │           ├── composables/
 │           │   ├── useAudioPreview.ts    # base64→Blob→ObjectURL；playsinline；data-URL 兼容
-│           │   └── useStreamingTranslation.ts ★ WS 流式 + ScriptProcessor；**重采样至 16kHz**；disconnect 条件 stop
+│           │   ├── useStreamingTranslation.ts ★ WS 流式 + ScriptProcessor；**重采样至 16kHz**；disconnect 条件 stop
+│           │   └── useConsent.ts         ★ Phase 10 — 单例 consent 状态 + AdSense 脚本条件加载
 │           │   # useAuth.ts 未实现
 │           ├── types/
 │           │   └── api.ts                # TypeScript 类型 (镜像后端 Pydantic 模型)
 │           ├── pages/
-│           │   └── TranslatePage.vue     # ★ Phase 8 单页编排
+│           │   ├── TranslatePage.vue     # ★ Phase 8 单页编排 (+Ad-1)
+│           │   ├── AboutPage.vue        ★ Phase 10 Batch 1 科学内容页 (+Ad-2, Ad-3)
+│           │   └── PrivacyPage.vue      ★ Phase 10 Batch 2 隐私政策页
 │           ├── components/
 │           │   ├── MeowPreviewPlayer.vue # Legacy 预览播放器
 │           │   ├── MeowPreviewPlayer.css
+│           │   ├── ads/                 ★ Phase 10 — 广告组件
+│           │   │   ├── AdUnit.vue        # consent-gated <ins class="adsbygoogle"> 渲染
+│           │   │   └── ConsentBanner.vue  # fixed-bottom GDPR 同意横幅
 │           │   └── translate/
 │           │       ├── ResultCard.vue     # 结果 + 播放
 │           │       ├── DemoHero.vue, ConnectionStatus.vue, BreedPreference.vue
@@ -577,7 +585,15 @@ LLM 系统提示词将完整标签词汇表注入，约束 LLM 只在有效范�
 |------|------|------|
 | `useAudioPreview.ts` | 已实现 | base64 WAV → Blob → ObjectURL → HTMLAudioElement；`playsinline`；strip data-URL；play 前检查 `src` |
 | `useStreamingTranslation.ts` | 已实现 | WebSocket 状态机；ScriptProcessorNode；**按 `inputBuffer.sampleRate` 线性重采样到 16kHz** 再发 PCM；`cleanupAudioCapture()`；**`disconnect` 仅当正在 `recording` 时发 `stop`**；`AudioContext.resume()`；Vue 3 Composition API |
+| `useConsent.ts` | **已实现** (Phase 10) | 模块级单例 consent 状态（`pending`/`accepted`/`declined`）；localStorage 持久化；`accept()` 动态加载 AdSense 脚本；`adsenseReady` ref 追踪 load |
 | `useAuth.ts` | **未实现** | 计划: `apiRegister()`, `apiLogin()` — 调用 `/auth/*` 端点 |
+
+### 8.2.1. 广告组件 (`src/ui/src/components/ads/`)
+
+| 组件 | 职责 |
+|------|------|
+| `AdUnit.vue` | consent 为 `accepted` 时渲染 `<ins class="adsbygoogle">`；`onMounted` + `watch` push adsbygoogle；幂等 `pushOnce()` |
+| `ConsentBanner.vue` | `fixed bottom-0 z-[100]`；仅 `consent === 'pending'` 显示；Accept/Decline 按钮调用 `useConsent()` |
 
 ### 8.3. 认证状态管理 — 未实现
 
@@ -587,7 +603,9 @@ LLM 系统提示词将完整标签词汇表注入，约束 LLM 只在有效范�
 
 | 页面 | 状态 | 说明 |
 |------|------|------|
-| `pages/TranslatePage.vue` | **已实现** (Phase 8) | 流式翻译单页；组合 `translate/*` 子组件；详见 [phase8-batch-ui-2026-04-06.md](../batch-reports/phase8-batch-ui-2026-04-06.md) |
+| `pages/TranslatePage.vue` | **已实现** (Phase 8) | 流式翻译单页；组合 `translate/*` 子组件；Phase 10 新增 Ad-1（`v-if="result"`）；详见 [phase8-batch-ui-2026-04-06.md](../batch-reports/phase8-batch-ui-2026-04-06.md) |
+| `pages/AboutPage.vue` | **已实现** (Phase 10 B1) | 科学内容页 600+ 词；CatMeows/Meowsic/五维标签/FAQ；B2 新增 Ad-2（文中）+ Ad-3（文末） |
+| `pages/PrivacyPage.vue` | **已实现** (Phase 10 B2) | 隐私政策 5 章节（数据收集、Cookie/广告、第三方、权利、联系） |
 | `LoginPage.vue` / `RegisterPage.vue` | 未实现 | Phase 6 暂缓 |
 
 ### 8.5. Flet 移动端原型 (`src/flet_mobile/`)

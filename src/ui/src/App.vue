@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { RouterLink, RouterView } from "vue-router";
+import ConsentBanner from "./components/ads/ConsentBanner.vue";
 </script>
 
 <template>
@@ -17,7 +18,7 @@ import { RouterLink, RouterView } from "vue-router";
         >
           Meowsformer
         </RouterLink>
-        <div class="flex items-center gap-5 text-sm">
+        <div class="flex items-center gap-4 sm:gap-5 text-sm">
           <RouterLink
             to="/"
             class="text-gray-400 hover:text-white transition-colors"
@@ -32,9 +33,30 @@ import { RouterLink, RouterView } from "vue-router";
           >
             Science
           </RouterLink>
+          <a
+            href="https://ko-fi.com/jeoker0880"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-xs text-pink-400 hover:text-pink-300 transition-colors"
+          >
+            ♥ Support
+          </a>
         </div>
       </div>
     </nav>
     <RouterView />
+    <footer
+      class="border-t border-white/5 px-4 py-4 text-center text-xs text-gray-600"
+    >
+      <RouterLink
+        to="/privacy"
+        class="text-gray-500 hover:text-gray-400 transition-colors"
+      >
+        Privacy Policy
+      </RouterLink>
+      <span class="mx-2 text-gray-700" aria-hidden="true">·</span>
+      <span>© 2026 Meowsformer</span>
+    </footer>
+    <ConsentBanner />
   </div>
 </template>
