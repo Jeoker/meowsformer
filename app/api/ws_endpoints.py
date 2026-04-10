@@ -42,6 +42,7 @@ from app.services.sound_selection_service import (
     generate_target_tags,
     select_and_encode,
 )
+from app.request_stats import increment as increment_request_stat
 from app.services.streaming_transcription_service import (
     StreamingTranscriptionSession,
 )
@@ -86,6 +87,7 @@ def _word_count(text: str) -> int:
 async def ws_translate(websocket: WebSocket) -> None:
     """WebSocket endpoint for streaming cat-sound translation."""
     await websocket.accept()
+    increment_request_stat("/ws/translate")
     logger.info("WebSocket connection accepted")
 
     # Ensure samples are loaded

@@ -1,6 +1,7 @@
+import asyncio
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
@@ -8,6 +9,7 @@ from loguru import logger
 from app.services.rag_service import initialize_knowledge_base
 from app.api.endpoints import router as api_router
 from app.api.ws_endpoints import router as ws_router
+from app import request_stats
 import uvicorn
 
 # 配置日志
@@ -17,6 +19,13 @@ app = FastAPI(
     title="MeowTranslator",
     debug=settings.DEBUG_MODE,
 )
+
+
+@app.middleware("http")
+async def count_requests(request: Request, call_next):
+    request_stats.increment(request.url.path)
+    return await call_next(request)
+
 
 # CORS 配置
 app.add_middleware(
@@ -48,11 +57,29 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"Could not load tagged samples: {e}")
 
+    asyncio.create_task(request_stats.periodic_save())
+    logger.info(
+        f"Stats loaded from {request_stats.STATS_FILE}: "
+        f"{request_stats.snapshot_for_log()}"
+    )
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    request_stats.save()
+    logger.info("Stats saved on shutdown.")
+
 
 @app.get("/health")
 async def health_check():
     """健康检查接口"""
     return {"status": "ok", "app": "MeowTranslator"}
+
+
+@app.get("/stats")
+async def get_stats():
+    """请求计数统计；写入 stats.json，部署新镜像或 SIGKILL 可能丢失未落盘增量。"""
+    return request_stats.stats_payload()
 
 
 # Register routers
