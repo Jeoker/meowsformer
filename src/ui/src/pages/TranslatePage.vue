@@ -9,6 +9,7 @@ import LiveFeed from "../components/translate/LiveFeed.vue";
 import ErrorBanner from "../components/translate/ErrorBanner.vue";
 import ResultSection from "../components/translate/ResultSection.vue";
 import AdUnit from "../components/ads/AdUnit.vue";
+import { ADSENSE_SLOT_RESULT } from "../config/adsense";
 
 const breedPreference = ref("");
 
@@ -78,7 +79,7 @@ async function handleStart() {
 
       <AdUnit
         v-if="result"
-        slot-id="AD_SLOT_RESULT"
+        :slot-id="ADSENSE_SLOT_RESULT"
         class="mt-4"
       />
 

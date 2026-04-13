@@ -1,8 +1,9 @@
 import { ref } from "vue";
+import { ADSENSE_CLIENT_ID } from "../config/adsense";
 
 export type AdConsent = "pending" | "accepted" | "declined";
 
-export const ADSENSE_CLIENT_ID = "ca-pub-5131422115935645";
+export { ADSENSE_CLIENT_ID };
 
 const STORAGE_KEY = "ad-consent";
 

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { watch, nextTick, onMounted } from "vue";
-import { useConsent, ADSENSE_CLIENT_ID } from "../../composables/useConsent";
+import { useConsent } from "../../composables/useConsent";
+import { ADSENSE_CLIENT_ID } from "../../config/adsense";
 
 withDefaults(
   defineProps<{

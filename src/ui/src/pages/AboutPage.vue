@@ -1,5 +1,9 @@
 <script setup lang="ts">
 import AdUnit from "../components/ads/AdUnit.vue";
+import {
+  ADSENSE_SLOT_ABOUT_BOTTOM,
+  ADSENSE_SLOT_ABOUT_MID,
+} from "../config/adsense";
 
 const zenodoCatMeows = "https://doi.org/10.5281/zenodo.4007940";
 const zenodoMeowsic = "https://doi.org/10.5281/zenodo.3245999";
@@ -98,7 +102,7 @@ const meowsicPortal =
       </section>
 
       <div class="my-6">
-        <AdUnit slot-id="AD_SLOT_ABOUT_MID" />
+        <AdUnit :slot-id="ADSENSE_SLOT_ABOUT_MID" />
       </div>
 
       <section class="space-y-4">
@@ -198,7 +202,7 @@ const meowsicPortal =
       </section>
 
       <div class="mt-6">
-        <AdUnit slot-id="AD_SLOT_ABOUT_BOTTOM" />
+        <AdUnit :slot-id="ADSENSE_SLOT_ABOUT_BOTTOM" />
       </div>
 
       <footer class="pt-4 border-t border-white/10 text-sm text-gray-500 leading-relaxed">
