@@ -8,9 +8,12 @@ withDefaults(
     slotId: string;
     format?: string;
     layout?: string;
+    /** Set false for fixed-width rails (e.g. sidebars). */
+    fullWidthResponsive?: boolean;
   }>(),
   {
     format: "auto",
+    fullWidthResponsive: true,
   },
 );
 
@@ -63,7 +66,9 @@ onMounted(() => {
         :data-ad-client="ADSENSE_CLIENT_ID"
         :data-ad-slot="slotId"
         :data-ad-format="format"
-        data-full-width-responsive="true"
+        :data-full-width-responsive="
+          fullWidthResponsive ? 'true' : 'false'
+        "
         v-bind="layout ? { 'data-ad-layout': layout } : {}"
       />
     </div>

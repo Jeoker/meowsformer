@@ -6,6 +6,9 @@
  * 里的 data-ad-slot 替换下方默认值，或设置 VITE_ADSENSE_SLOT_* 环境变量（Docker/Fly 构建前注入）。
  */
 export const ADSENSE_PUBLISHER_ID_NUMERIC = "5131422115935645";
+export const VITE_ADSENSE_SLOT_RESULT = "9959506878";
+export const VITE_ADSENSE_SLOT_ABOUT_MID = "5648952118";
+export const VITE_ADSENSE_SLOT_ABOUT_BOTTOM = "9676435840";
 
 export const ADSENSE_CLIENT_ID =
   `ca-pub-${ADSENSE_PUBLISHER_ID_NUMERIC}` as const;
@@ -22,7 +25,7 @@ const DEFAULT_DATA_AD_SLOT = ADSENSE_PUBLISHER_ID_NUMERIC;
 export const ADSENSE_SLOT_RESULT =
   slotFromEnv("VITE_ADSENSE_SLOT_RESULT") ?? DEFAULT_DATA_AD_SLOT;
 
-/** Science 页中段 */
+/** 宽屏（xl+）主页与 Science 页左右侧栏；仍由 `VITE_ADSENSE_SLOT_ABOUT_MID` 注入 */
 export const ADSENSE_SLOT_ABOUT_MID =
   slotFromEnv("VITE_ADSENSE_SLOT_ABOUT_MID") ?? DEFAULT_DATA_AD_SLOT;
 
