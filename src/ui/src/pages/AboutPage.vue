@@ -28,10 +28,10 @@ const meowsicPortal =
           The science behind our cat sound library
         </h1>
         <p class="text-base text-gray-400 leading-relaxed">
-          Meowsformer does not play random clips. Every response is chosen by a
-          deterministic matcher from a curated registry of real felid
-          vocalisations and multidimensional tags derived from published animal
-          behaviour and acoustics research.
+          Meowsformer does not play random clips. Every translated vocalisation
+          is chosen by a deterministic matcher from a curated registry of real
+          felid vocalisations and multidimensional tags derived from published
+          animal behaviour and acoustics research.
         </p>
       </header>
 

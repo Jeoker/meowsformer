@@ -2,7 +2,7 @@
 Meowsformer — WebSocket Streaming Endpoint
 ============================================
 Real-time audio input → parallel transcription → LLM target-tag
-generation → sample matching → cat sound playback.
+generation (speech → feline semantics) → sample matching → playback.
 
 Endpoint: ``ws://{host}/ws/translate``
 

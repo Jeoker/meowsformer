@@ -5,7 +5,7 @@ LLM-based target-tag generation + speculative execution.
 
 Key design:
 - LLM does NOT select a sample.  It outputs a ``TargetTagSet`` describing
-  what kind of cat sound would be the ideal response.
+  the cat vocalisation that best **translates** the owner's utterance.
 - The matching engine (``sample_matcher``) finds the best real sample.
 - Speculative execution: first LLM call fires on partial text; if the
   final text is similar, the cached result is reused instantly.
@@ -55,10 +55,10 @@ def _get_client() -> instructor.AsyncInstructor:
 
 # ── System prompt with full tag taxonomy ─────────────────────────────────
 
-_SYSTEM_PROMPT = """你是一位猫咪生物声学专家和情感分析师。
-你的任务是分析用户说的话（已转录为文字），然后判断一只猫听到这段话后应该发出什么样的声音来回应。
+_SYSTEM_PROMPT = """你是一位猫咪生物声学专家和翻译分析师。
+你的任务是：把主人说的话（已转录为文字）翻译成在猫的交际与情绪表达中具有相近内涵的猫叫声——即，若猫要用自己的发声来表达与人话相同或相近的意思，其叫声应在多维标签上呈现何种特征。
 
-你需要输出一组"目标标签"（target tags），描述理想的猫叫声应该具有的特征。
+你需要输出一组"目标标签"（target tags），描述这段**等价表达**应具有的声学—情绪特征。
 标签分为5个维度，每个维度的有效标签如下：
 
 **emotion** (猫的情绪): {emotion_tags}
@@ -76,7 +76,7 @@ _SYSTEM_PROMPT = """你是一位猫咪生物声学专家和情感分析师。
 2. acoustic维度：根据语境选择合适的音高、时长、音量、音调特征
 3. breed_voice维度可以留空，除非用户明确提到品种偏好
 4. reasoning字段用中文解释你的判断逻辑
-5. 你的目标是让猫的回应在语义上合理、在声学上自然
+5. 你的目标是：标签在猫的社交信号体系里尽量忠实承载主人话语的核心意图与情绪，并在声学上自然可信
 """.format(
     emotion_tags=", ".join(TAG_TAXONOMY["emotion"]),
     intent_tags=", ".join(TAG_TAXONOMY["intent"]),
@@ -95,16 +95,17 @@ async def generate_target_tags(text: str) -> TargetTagSet:
     Parameters
     ----------
     text : str
-        User's transcribed speech.
+        Owner's transcribed speech (source utterance to translate).
 
     Returns
     -------
     TargetTagSet
-        Multi-dimensional target tags describing the ideal cat response.
+        Multi-dimensional target tags for the cat vocalisation that best
+        expresses the same meaning as ``text`` (translation, not reply).
     """
     client = _get_client()
 
-    user_prompt = f"用户对猫说的话: \"{text}\"\n\n请分析并输出目标标签。"
+    user_prompt = f"主人说的话（转录）: \"{text}\"\n\n请做语义翻译并输出目标标签。"
 
     try:
         response = await client.chat.completions.create(

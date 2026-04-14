@@ -18,10 +18,11 @@ def _get_client() -> instructor.Instructor:
 
 def analyze_intention(text: str, audio_features: Dict[str, Any], rag_context: str) -> CatTranslationResponse:
     """
-    Analyze the intention based on text, audio features, and RAG context to determine the cat's response.
+    Map transcribed owner speech (plus acoustics and RAG) to synthesis-oriented
+    cat vocalisation parameters — semantic translation, not a reactive reply.
     
     Args:
-        text (str): The user's input text or intent.
+        text (str): Transcribed owner speech.
         audio_features (dict): Extracted audio features.
         rag_context (str): Retrieved context from the vector database.
         
@@ -30,11 +31,12 @@ def analyze_intention(text: str, audio_features: Dict[str, Any], rag_context: st
     """
     
     system_prompt = (
-        "你是一个精通猫咪生物声学的翻译官。根据用户的文本意图、音频特征和提供的科学上下文，决定猫的反应。"
+        "你是一个精通猫咪生物声学的翻译官。根据主人的口述文本、音频特征与科学上下文，"
+        "将人话的含义映射到应合成的猫叫声参数；你是在做语义翻译，而不是推断猫听完话后的现场反应。"
     )
     
     user_prompt = f"""
-    用户文本意图: {text}
+    主人口述（转录）: {text}
     
     音频特征:
     {json.dumps(audio_features, ensure_ascii=False, indent=2)}

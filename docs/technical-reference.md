@@ -367,7 +367,7 @@ LLM 系统提示词将完整标签词汇表注入，约束 LLM 只在有效范�
   "intent": ["seeking_companionship"],
   "acoustic": ["prolonged", "soft", "falling_tone"],
   "social_context": ["alone_at_home", "separation"],
-  "reasoning": "用户表达了对猫咪的思念，猫咪应以孤独渴望陪伴的方式回应"
+  "reasoning": "用户表达对猫咪的思念；在猫的信号体系中等价于分离焦虑与寻求陪伴，故选用孤独、焦虑与求伴类标签"
 }
 ```
 

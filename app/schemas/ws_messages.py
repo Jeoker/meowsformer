@@ -6,7 +6,7 @@ Pydantic models for the WebSocket streaming translation protocol.
 Includes:
 - Client → Server message types (config, stop)
 - Server → Client message types (transcription, analysis_preview, result, error)
-- TargetTagSet — LLM output describing the ideal cat sound
+- TargetTagSet — LLM output describing the ideal translated cat vocalisation
 - TaggedSampleInfo — matched sample details returned to the client
 - StreamingTranslationResult — final result payload
 """
@@ -21,11 +21,11 @@ from pydantic import BaseModel, Field
 
 
 class TargetTagSet(BaseModel):
-    """LLM outputs: what tags should the ideal response sound have?
+    """LLM outputs: what tags should the ideal *translated* cat sound have?
 
-    The LLM does NOT select a sample — it describes the *ideal* cat sound
-    in terms of multi-dimensional tags.  The matching engine then finds
-    the best real sample.
+    The LLM does NOT select a sample — it describes the cat vocalisation
+    that best expresses the owner's utterance, in multi-dimensional tags.
+    The matching engine then finds the best real sample.
     """
 
     emotion: list[str] = Field(

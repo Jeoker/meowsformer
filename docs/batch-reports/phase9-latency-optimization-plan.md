@@ -151,7 +151,7 @@ response = await client.chat.completions.create(...)  # async
 ```python
 async def generate_target_tags(text: str) -> TargetTagSet:
     client = _get_client()
-    user_prompt = f"用户对猫说的话: \"{text}\"\n\n请分析并输出目标标签。"
+    user_prompt = f"主人说的话（转录）: \"{text}\"\n\n请做语义翻译并输出目标标签。"
 
     try:
         response = await client.chat.completions.create(

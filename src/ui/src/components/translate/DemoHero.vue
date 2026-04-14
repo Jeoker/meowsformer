@@ -18,7 +18,7 @@ defineProps<{
     <p class="text-sm sm:text-base text-gray-400 max-w-md mx-auto leading-relaxed">
       {{
         subtitle ??
-        "Speak into the microphone—the system turns what you mean into an evidence-based cat vocal response."
+        "Speak into the microphone—the system translates your words into an evidence-based cat vocalisation chosen to match the same meaning."
       }}
     </p>
   </header>
