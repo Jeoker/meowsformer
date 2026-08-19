@@ -29,6 +29,7 @@ export interface StreamingResult {
 // ── Configuration ───────────────────────────────────────────────────────
 
 const SAMPLE_RATE = 16000;
+const WS_CONNECT_TIMEOUT_MS = 25_000;
 
 /**
  * Browsers often ignore AudioContext({ sampleRate: 16000 }) and run at 44100/48000 Hz.
@@ -75,6 +76,7 @@ export function useStreamingTranslation() {
   const preview = ref<{ emotion: string; intent: string } | null>(null);
   const result = ref<StreamingResult | null>(null);
   const error = ref<string | null>(null);
+  let pendingConnect: Promise<void> | null = null;
 
   // ── WebSocket message handler ───────────────────────────────────────
 
@@ -116,34 +118,62 @@ export function useStreamingTranslation() {
 
   // ── Connect ─────────────────────────────────────────────────────────
 
-  function connect(breedPreference?: string) {
-    if (ws.value?.readyState === WebSocket.OPEN) return;
+  function connect(breedPreference?: string): Promise<void> {
+    if (ws.value?.readyState === WebSocket.OPEN) {
+      return Promise.resolve();
+    }
+    if (pendingConnect) {
+      return pendingConnect;
+    }
 
     state.value = "connecting";
+    error.value = null;
     const socket = new WebSocket(getWsUrl());
     ws.value = socket;
 
-    socket.onopen = () => {
-      state.value = "connected";
-      if (breedPreference) {
-        socket.send(
-          JSON.stringify({ type: "config", breed_preference: breedPreference })
-        );
-      }
-    };
-
     socket.onmessage = handleMessage;
 
-    socket.onerror = () => {
-      error.value = "WebSocket connection error";
-      state.value = "error";
-    };
+    pendingConnect = new Promise<void>((resolve, reject) => {
+      const timeoutId = window.setTimeout(() => {
+        error.value = "WebSocket connection timed out. Please try again.";
+        state.value = "error";
+        socket.close();
+        reject(new Error("WebSocket connection timed out"));
+      }, WS_CONNECT_TIMEOUT_MS);
 
-    socket.onclose = () => {
-      if (state.value !== "error" && state.value !== "result") {
-        state.value = "idle";
-      }
-    };
+      socket.onopen = () => {
+        window.clearTimeout(timeoutId);
+        state.value = "connected";
+        if (breedPreference) {
+          socket.send(
+            JSON.stringify({ type: "config", breed_preference: breedPreference })
+          );
+        }
+        resolve();
+      };
+
+      socket.onerror = () => {
+        window.clearTimeout(timeoutId);
+        error.value = "WebSocket connection error. Please try again.";
+        state.value = "error";
+        reject(new Error("WebSocket connection error"));
+      };
+
+      socket.onclose = () => {
+        window.clearTimeout(timeoutId);
+        if (ws.value === socket) {
+          ws.value = null;
+        }
+        if (state.value !== "error" && state.value !== "result") {
+          state.value = "idle";
+        }
+        reject(new Error("WebSocket closed before connecting"));
+      };
+    }).finally(() => {
+      pendingConnect = null;
+    });
+
+    return pendingConnect;
   }
 
   /** Stop mic / processor / AudioContext without telling the server (used when closing WS). */

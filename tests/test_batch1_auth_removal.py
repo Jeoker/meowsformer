@@ -91,7 +91,22 @@ class TestRouteRegistration(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         from main import app
-        cls.route_paths = [route.path for route in app.routes]
+        # FastAPI 0.138+ may keep included routers as lazy _IncludedRouter
+        # entries without a ``path`` attribute. Walk their original routers
+        # so HTTP and WebSocket routes are covered across FastAPI versions.
+        cls.route_paths = []
+        for route in app.routes:
+            if hasattr(route, "path"):
+                cls.route_paths.append(route.path)
+                continue
+            original_router = getattr(route, "original_router", None)
+            include_context = getattr(route, "include_context", None)
+            if original_router is None or include_context is None:
+                continue
+            prefix = include_context.prefix
+            cls.route_paths.extend(
+                f"{prefix}{child.path}" for child in original_router.routes
+            )
 
     def test_health_route_registered(self) -> None:
         self.assertIn("/health", self.route_paths)

@@ -26,7 +26,7 @@ class TestRAGService(unittest.TestCase):
         mock_collection.count.return_value = 0
         initialize_knowledge_base()
         mock_collection.add.assert_called_once()
-        print("✅ RAG Initialization (empty db) passed.")
+        print("PASS: RAG Initialization (empty db)")
 
         # Reset mock
         mock_collection.reset_mock()
@@ -35,7 +35,7 @@ class TestRAGService(unittest.TestCase):
         mock_collection.count.return_value = 10
         initialize_knowledge_base()
         mock_collection.add.assert_not_called()
-        print("✅ RAG Initialization (existing db) passed.")
+        print("PASS: RAG Initialization (existing db)")
 
     @patch("app.services.rag_service.get_collection")
     def test_retrieve_context(self, mock_get_collection):
@@ -64,7 +64,7 @@ class TestRAGService(unittest.TestCase):
         
         expected_context = "First relevant doc.\n\nSecond relevant doc."
         self.assertEqual(context, expected_context)
-        print("✅ RAG Retrieval passed.")
+        print("PASS: RAG Retrieval")
 
 if __name__ == "__main__":
     unittest.main()

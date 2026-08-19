@@ -41,7 +41,7 @@ async def test_audio_processing():
     assert features["duration_seconds"] >= 0.9, "Duration should be around 1.0s"
     assert features["rms_amplitude"] > 0, "RMS amplitude should be positive"
     assert features["mean_volume_db"] != -99.9, "Volume should be detected"
-    print("✅ Feature extraction passed.")
+    print("PASS: Feature extraction")
 
     # Test 2: Conversion
     await convert_to_wav(TEST_AUDIO_FILE, CONVERTED_AUDIO_FILE)
@@ -62,7 +62,7 @@ async def test_audio_processing():
     ]
     sr = subprocess.check_output(probe_cmd).decode().strip()
     assert sr == "16000", f"Sample rate should be 16000, got {sr}"
-    print("✅ Audio conversion passed.")
+    print("PASS: Audio conversion")
 
 async def test_transcription_service():
     print("\n--- Testing Transcription Service ---")
@@ -82,7 +82,7 @@ async def test_transcription_service():
         # Test valid transcription
         result = await transcribe_audio(TEST_AUDIO_FILE)
         assert result == "This is a meow."
-        print("✅ Transcription passed.")
+        print("PASS: Transcription")
         
         # Verify it called the API with a file
         mock_create.assert_called_once()

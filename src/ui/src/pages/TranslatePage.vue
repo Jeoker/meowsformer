@@ -30,11 +30,13 @@ const breedLocked = () =>
   state.value === "recording" || state.value === "processing";
 
 async function handleStart() {
-  if (state.value === "idle") {
-    connect(breedPreference.value || undefined);
-    await new Promise((r) => setTimeout(r, 500));
+  try {
+    await connect(breedPreference.value || undefined);
+    await startRecording();
+  } catch {
+    // connect() already exposes a user-facing error and leaves Start enabled
+    // so the user can retry after a cold-start or transient network failure.
   }
-  await startRecording();
 }
 </script>
 

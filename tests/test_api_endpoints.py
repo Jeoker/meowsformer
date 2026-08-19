@@ -76,7 +76,7 @@ class TestAPIEndpoints(unittest.TestCase):
         mock_retrieve.assert_called_once()
         mock_analyze.assert_called_once()
         
-        print("✅ API Endpoint Test Passed")
+        print("PASS: API Endpoint Test")
 
 if __name__ == "__main__":
     unittest.main()
