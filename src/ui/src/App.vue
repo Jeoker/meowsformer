@@ -24,7 +24,13 @@ import ConsentBanner from "./components/ads/ConsentBanner.vue";
             class="text-gray-400 hover:text-white transition-colors"
             active-class="text-meow-400 font-medium"
           >
-            Home
+            Translate
+          </RouterLink>
+          <RouterLink
+            :to="{ path: '/', hash: '#how-it-works' }"
+            class="hidden text-gray-400 transition-colors hover:text-white sm:inline"
+          >
+            How it works
           </RouterLink>
           <RouterLink
             to="/about"
@@ -33,14 +39,6 @@ import ConsentBanner from "./components/ads/ConsentBanner.vue";
           >
             Science
           </RouterLink>
-          <a
-            href="https://ko-fi.com/jeoker0880"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-xs text-pink-400 hover:text-pink-300 transition-colors"
-          >
-            ♥ Support
-          </a>
         </div>
       </div>
     </nav>
@@ -54,6 +52,15 @@ import ConsentBanner from "./components/ads/ConsentBanner.vue";
       >
         Privacy Policy
       </RouterLink>
+      <span class="mx-2 text-gray-700" aria-hidden="true">·</span>
+      <a
+        href="https://ko-fi.com/jeoker0880"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="text-gray-500 transition-colors hover:text-pink-300"
+      >
+        Support the project
+      </a>
       <span class="mx-2 text-gray-700" aria-hidden="true">·</span>
       <span>© 2026 Meowsformer</span>
     </footer>

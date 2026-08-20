@@ -38,7 +38,7 @@ const startDisabled = computed(
         class="absolute inset-0 bg-white/10 opacity-0 transition group-hover:opacity-100"
         aria-hidden="true"
       />
-      <span class="relative">Start recording</span>
+      <span class="relative">Record a short message</span>
     </button>
 
     <button

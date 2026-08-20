@@ -46,7 +46,7 @@ class TargetTagSet(BaseModel):
     )
     reasoning: str = Field(
         default="",
-        description="LLM reasoning in Chinese explaining the tag selection.",
+        description="Concise end-user reasoning explaining the tag selection.",
     )
 
 

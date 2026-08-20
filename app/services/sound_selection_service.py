@@ -55,28 +55,30 @@ def _get_client() -> instructor.AsyncInstructor:
 
 # ── System prompt with full tag taxonomy ─────────────────────────────────
 
-_SYSTEM_PROMPT = """你是一位猫咪生物声学专家和翻译分析师。
-你的任务是：把主人说的话（已转录为文字）翻译成在猫的交际与情绪表达中具有相近内涵的猫叫声——即，若猫要用自己的发声来表达与人话相同或相近的意思，其叫声应在多维标签上呈现何种特征。
+_SYSTEM_PROMPT = """You are a cat bioacoustics specialist and translation analyst.
+Translate the owner's transcribed words into the multidimensional traits a cat
+vocalisation would need to express a similar core emotion and communicative
+intent. This is semantic translation, not a prediction of how a cat would react.
 
-你需要输出一组"目标标签"（target tags），描述这段**等价表达**应具有的声学—情绪特征。
-标签分为5个维度，每个维度的有效标签如下：
+Return target tags for an equivalent feline expression. Valid tags are:
 
-**emotion** (猫的情绪): {emotion_tags}
+**emotion**: {emotion_tags}
 
-**intent** (沟通目的): {intent_tags}
+**intent**: {intent_tags}
 
-**acoustic** (声学特征): {acoustic_tags}
+**acoustic**: {acoustic_tags}
 
-**social_context** (社交场景): {social_context_tags}
+**social_context**: {social_context_tags}
 
-**breed_voice** (品种声线，可选): {breed_voice_tags}
+**breed_voice** (optional): {breed_voice_tags}
 
-规则：
-1. 每个维度选择1-3个最相关的标签
-2. acoustic维度：根据语境选择合适的音高、时长、音量、音调特征
-3. breed_voice维度可以留空，除非用户明确提到品种偏好
-4. reasoning字段用中文解释你的判断逻辑
-5. 你的目标是：标签在猫的社交信号体系里尽量忠实承载主人话语的核心意图与情绪，并在声学上自然可信
+Rules:
+1. Choose 1–3 of the most relevant tags for each applicable dimension.
+2. For acoustic tags, infer a plausible pitch, duration, energy, and contour.
+3. Leave breed_voice empty unless the owner explicitly requests a breed.
+4. Write the reasoning field in concise, natural English for an end user.
+5. Preserve the owner's central emotion and intent while keeping the proposed
+   vocal character plausible within feline social signalling.
 """.format(
     emotion_tags=", ".join(TAG_TAXONOMY["emotion"]),
     intent_tags=", ".join(TAG_TAXONOMY["intent"]),
@@ -105,7 +107,10 @@ async def generate_target_tags(text: str) -> TargetTagSet:
     """
     client = _get_client()
 
-    user_prompt = f"主人说的话（转录）: \"{text}\"\n\n请做语义翻译并输出目标标签。"
+    user_prompt = (
+        f'Owner transcript: "{text}"\n\n'
+        "Perform the semantic translation and return the target tags."
+    )
 
     try:
         response = await client.chat.completions.create(
@@ -127,7 +132,7 @@ async def generate_target_tags(text: str) -> TargetTagSet:
             intent=["expressing_comfort"],
             acoustic=["mid_pitch", "medium_length"],
             social_context=["near_owner"],
-            reasoning=f"LLM调用失败，使用默认标签: {e}",
+            reasoning=f"The language analysis was unavailable, so a calm default match was used: {e}",
         )
 
 

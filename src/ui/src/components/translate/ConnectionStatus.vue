@@ -7,12 +7,12 @@ const props = defineProps<{
 
 const labels: Record<StreamingState, string> = {
   idle: "Ready",
-  connecting: "Connecting",
-  connected: "Connected",
-  recording: "Listening",
-  processing: "Matching",
-  result: "Done",
-  error: "Error",
+  connecting: "Waking up the bioacoustic lab…",
+  connected: "Microphone ready",
+  recording: "Listening to your message…",
+  processing: "Finding the closest cat voice…",
+  result: "Your match is ready",
+  error: "Something interrupted the translation",
 };
 
 const styles: Record<StreamingState, string> = {

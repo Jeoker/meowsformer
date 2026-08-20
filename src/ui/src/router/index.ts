@@ -10,7 +10,10 @@ export const router = createRouter({
     { path: "/about", name: "about", component: AboutPage },
     { path: "/privacy", name: "privacy", component: PrivacyPage },
   ],
-  scrollBehavior() {
+  scrollBehavior(to) {
+    if (to.hash) {
+      return { el: to.hash, behavior: "smooth" };
+    }
     return { top: 0 };
   },
 });

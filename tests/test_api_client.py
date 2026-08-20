@@ -925,7 +925,7 @@ class TestGenerateTargetTagsAsync(unittest.TestCase):
         self.assertEqual(result.intent, ["expressing_comfort"])
         self.assertEqual(result.acoustic, ["mid_pitch", "medium_length"])
         self.assertEqual(result.social_context, ["near_owner"])
-        self.assertIn("LLM调用失败", result.reasoning)
+        self.assertIn("language analysis was unavailable", result.reasoning)
 
     def test_passes_response_model_target_tag_set(self) -> None:
         from app.schemas.ws_messages import TargetTagSet
